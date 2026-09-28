@@ -11,7 +11,8 @@
 //	err = d.SetAll(blinkstick.RGB{R: 255})
 //
 // Use [List] to find every attached stick and [OpenSerial] to open a
-// particular one. Several sticks can be open at once, and a [Device] is safe
+// particular one. A stick can also be given a name with [Device.SetName] and
+// opened by it with [OpenName]. Several sticks can be open at once, and a [Device] is safe
 // for concurrent use.
 //
 // # Requirements
@@ -22,8 +23,8 @@
 //
 // # EEPROM
 //
-// [Device.SetInfoBlock] writes to EEPROM on the device, which wears with use.
-// Setting LEDs does not.
+// [Device.SetInfoBlock] and [Device.SetName] write to EEPROM on the device,
+// which wears with use. Setting LEDs does not.
 //
 // This package is unofficial and not affiliated with Agile Innovative.
 package blinkstick

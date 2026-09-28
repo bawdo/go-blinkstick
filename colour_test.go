@@ -1,6 +1,9 @@
 package blinkstick
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseRGB(t *testing.T) {
 	tests := []struct {
@@ -14,6 +17,17 @@ func TestParseRGB(t *testing.T) {
 		{"#ffffff", White},
 		{"255,136,0", RGB{255, 136, 0}},
 		{" 1, 2 ,3 ", RGB{1, 2, 3}},
+		{"ff8800", RGB{255, 136, 0}},
+		{"f80", RGB{255, 136, 0}},
+		{" FFF ", White},
+		{"red", RGB{255, 0, 0}},
+		{"CornflowerBlue", RGB{100, 149, 237}},
+		{" rebeccapurple ", RGB{102, 51, 153}},
+		{"grey", RGB{128, 128, 128}},
+		{"gray", RGB{128, 128, 128}},
+		{"lightslategrey", RGB{119, 136, 153}},
+		{"black", Off},
+		{"white", White},
 	}
 	for _, tt := range tests {
 		got, err := ParseRGB(tt.in)
@@ -29,7 +43,8 @@ func TestParseRGB(t *testing.T) {
 
 func TestParseRGBRejects(t *testing.T) {
 	for _, in := range []string{
-		"", "#", "#ff88", "#ff88000", "#gg0000", "ff8800",
+		"", "#", "#ff88", "#ff88000", "#gg0000", "ff88", "ff88000", "gg0000",
+		"transparent", "currentcolor", "notacolour", "red ish", "#red",
 		"1,2", "1,2,3,4", "256,0,0", "-1,0,0", "a,b,c",
 	} {
 		if got, err := ParseRGB(in); err == nil {
@@ -52,6 +67,20 @@ func TestScale(t *testing.T) {
 	for _, tt := range tests {
 		if got := tt.c.scale(tt.limit); got != tt.want {
 			t.Errorf("%v.scale(%d) = %v, want %v", tt.c, tt.limit, got, tt.want)
+		}
+	}
+}
+
+func TestColourNamesTable(t *testing.T) {
+	if n := len(colourNames); n != 148 {
+		t.Errorf("colourNames has %d entries, want 148 (CSS Color Level 4)", n)
+	}
+	for name := range colourNames {
+		if name != strings.ToLower(name) {
+			t.Errorf("colourNames key %q is not lower case", name)
+		}
+		if _, err := parseHex(name, name); err == nil {
+			t.Errorf("colourNames key %q also parses as bare hex", name)
 		}
 	}
 }

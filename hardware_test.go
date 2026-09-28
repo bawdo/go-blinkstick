@@ -3,19 +3,24 @@
 // Hardware tests need a BlinkStick Nano and a Square attached, and someone
 // watching the LEDs. Run them with: make test-hardware
 //
-// EEPROM RULE: these tests must never call SetInfoBlock or anything else that
-// writes EEPROM, because EEPROM wears with use. LED values live in RAM and
-// cause no wear.
+// EEPROM RULE: these tests must never call SetInfoBlock, SetName or anything
+// else that writes EEPROM, because EEPROM wears with use. Reading info blocks
+// and names is fine. LED values live in RAM and cause no wear. Set a name by
+// hand if you want the name tests to do more than read.
 
 package blinkstick
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 // hold returns how long a step on d stays visible. The Square has four times
@@ -261,4 +266,134 @@ func TestHardwareConcurrentOpen(t *testing.T) {
 		}
 	}
 	wg.Wait()
+}
+
+// TestHardwareName reads each stick's name. It never writes one.
+func TestHardwareName(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		name, err := d.Name()
+		if err != nil {
+			t.Fatalf("Name: %v", err)
+		}
+		t.Logf("name %q", name)
+		if !utf8.ValidString(name) {
+			t.Errorf("name %q is not valid UTF-8", name)
+		}
+	})
+}
+
+// TestHardwareListNamedAndOpenName lists names with no stick open, then opens
+// each named stick by its name. It never writes a name.
+func TestHardwareListNamedAndOpenName(t *testing.T) {
+	named, err := ListNamed()
+	if err != nil {
+		t.Fatalf("ListNamed: %v", err)
+	}
+	count := map[string]int{}
+	for _, n := range named {
+		t.Logf("%s %s name %q busy %v", n.Serial, n.Model.Name, n.Name, n.Busy)
+		if n.Busy {
+			t.Errorf("%s busy with nothing else holding it", n.Serial)
+		}
+		count[n.Name]++
+	}
+	for _, n := range named {
+		if n.Name == "" || count[n.Name] > 1 || n.Model.Name == "unknown" {
+			continue
+		}
+		d, err := OpenName(n.Name)
+		if err != nil {
+			t.Errorf("OpenName(%q): %v", n.Name, err)
+			continue
+		}
+		if d.Info().Serial != n.Serial {
+			t.Errorf("OpenName(%q) opened %s, want %s", n.Name, d.Info().Serial, n.Serial)
+		}
+		d.Close()
+	}
+	if len(count) == 1 && count[""] > 0 {
+		t.Log("no stick has a name, so OpenName was not exercised; set one by hand to cover it")
+	}
+}
+
+// TestHardwareReconnect needs someone to unplug and replug the Nano, so it
+// only runs with BLINKSTICK_UNPLUG=1: make test-reconnect. It writes LEDs
+// only. A replugged stick does not always register with macOS, even with
+// no program running, so the test checks IOKit directly and reports whether
+// macOS saw the Nano come back. If it did not, the failure is the stick or
+// port, not this package.
+func TestHardwareReconnect(t *testing.T) {
+	if os.Getenv("BLINKSTICK_UNPLUG") != "1" {
+		t.Skip("set BLINKSTICK_UNPLUG=1 to run; needs the Nano unplugged and replugged by hand")
+	}
+	nano, _ := openBoth(t)
+	orange := []RGB{{R: 255, G: 80}, {R: 255, G: 80}}
+	if err := nano.SetFrame(orange); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
+
+	t.Log("ACTION: unplug the Nano now (60 seconds)")
+	var gone error
+	for deadline := time.Now().Add(60 * time.Second); time.Now().Before(deadline); {
+		if _, err := nano.Frame(); err != nil {
+			gone = err
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if gone == nil {
+		t.Fatal("no error seen while unplugged")
+	}
+	t.Logf("while unplugged: %v", gone)
+	if !errors.Is(gone, ErrDisconnected) {
+		t.Errorf("error while unplugged = %v, want ErrDisconnected", gone)
+	}
+
+	t.Log("ACTION: plug the Nano back in (60 seconds)")
+	var got []RGB
+	var err error
+	serial := nano.Info().Serial
+	osSaw := false
+	for deadline := time.Now().Add(60 * time.Second); time.Now().Before(deadline); {
+		if !osSaw && usbHas(serial) {
+			osSaw = true
+			t.Logf("macOS sees %s on USB again", serial)
+		}
+		if got, err = nano.Frame(); err == nil {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("never reconnected (macOS saw the Nano on USB: %v): %v", osSaw, err)
+	}
+	t.Log("watch: the Nano should be orange again")
+	time.Sleep(hold(nano))
+	if !slices.Equal(got, orange) {
+		t.Errorf("Frame after replug = %v, want %v repainted", got, orange)
+	}
+}
+
+func TestHardwareInverse(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		d.SetInverse(true)
+		defer d.SetInverse(false)
+		red := RGB{R: 255}
+		if err := d.SetAll(red); err != nil {
+			t.Fatalf("SetAll: %v", err)
+		}
+		t.Log("watch: all LEDs cyan (red inverted)")
+		time.Sleep(hold(d))
+		got, _ := d.Frame()
+		if want := fill(d.Info().Model.LEDs, red); !slices.Equal(got, want) {
+			t.Errorf("Frame = %v, want %v flipped back", got, want)
+		}
+	})
+}
+
+// usbHas reports whether macOS lists a USB device with the given serial,
+// asking IOKit directly rather than through hidapi.
+func usbHas(serial string) bool {
+	out, err := exec.Command("ioreg", "-p", "IOUSB", "-l", "-w0").Output()
+	return err == nil && strings.Contains(string(out), `"USB Serial Number" = "`+serial+`"`)
 }

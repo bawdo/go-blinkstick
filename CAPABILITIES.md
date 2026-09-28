@@ -16,6 +16,7 @@ Features built into the BlinkStick firmware.
 |---|---|---|---|---|
 | List attached sticks | yes | yes | v0.1.0 | `List` |
 | Open the first stick or one by serial | yes | yes | v0.1.0 | `Open`, `OpenSerial` |
+| Name a stick and open it by name | yes | yes | v0.2.0 | `SetName`, `Name`, `OpenName`, `ListNamed`. Stored in info block 1 |
 | Several sticks open at once | yes | yes | v0.1.0 | |
 | Serial and firmware version | yes | yes | v0.1.0 | `Info` |
 | Manufacturer and product strings | yes | yes | v0.1.0 | `Info` |
@@ -37,13 +38,13 @@ Features this package adds in software. They work the same on every supported de
 | Feature | Supported since | Notes |
 |---|---|---|
 | Model detection | v0.1.0 | From the serial and USB release number |
-| Colour from hex or `r,g,b` | v0.1.0 | `ParseRGB` |
+| Colour from hex or `r,g,b` | v0.1.0 | `ParseRGB`. Hex without the `#` since v0.2.0 |
 | Brightness limit | v0.1.0 | `SetBrightnessLimit` |
 | Blink, pulse and morph | v0.1.0 | Cancellable with a context |
-| CSS colour names | no | |
-| Random colour | no | |
-| Inverse colours | no | |
-| Reconnect after unplug | no | |
+| CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
+| Random colour | v0.2.0 | `RandomRGB`, `RandomVivid` |
+| Inverse colours | v0.2.0 | `RGB.Inverse`, `SetInverse`. Not the firmware inverse mode |
+| Reconnect after unplug | v0.2.0 | Automatic, repaints the last frame. `ErrDisconnected` |
 
 ## Platforms
 
