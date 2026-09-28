@@ -1,7 +1,6 @@
 # go-blinkstick
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/bawdo/go-blinkstick.svg)](https://pkg.go.dev/github.com/bawdo/go-blinkstick)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bawdo/go-blinkstick)](https://goreportcard.com/report/github.com/bawdo/go-blinkstick)
 
 A Go package for driving BlinkStick USB LED devices.
 
