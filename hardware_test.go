@@ -235,3 +235,30 @@ func TestHardwareReport10Probe(t *testing.T) {
 	square.mu.Unlock()
 	t.Logf("report 10: err=%v bytes=% x", err, buf)
 }
+
+// TestHardwareConcurrentOpen lists and opens both sticks from several
+// goroutines at once. Run with -race. It writes nothing to the devices.
+func TestHardwareConcurrentOpen(t *testing.T) {
+	infos, err := List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	var wg sync.WaitGroup
+	for range 8 {
+		for _, info := range infos {
+			wg.Go(func() {
+				if _, err := List(); err != nil {
+					t.Errorf("List: %v", err)
+				}
+				d, err := OpenSerial(info.Serial)
+				if err != nil {
+					// macOS opens devices exclusively, so a concurrent open of
+					// the same stick may fail. Only a panic or race is a failure.
+					return
+				}
+				d.Close()
+			})
+		}
+	}
+	wg.Wait()
+}

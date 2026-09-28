@@ -18,6 +18,11 @@ var (
 	hidExit = hid.Exit
 )
 
+// enumMu serialises hidapi calls that walk the device list. On macOS
+// hid_enumerate reconfigures a single global IOHIDManager and hid_open calls
+// hid_enumerate, so they must not run concurrently.
+var enumMu sync.Mutex
+
 func acquireHID() error {
 	hidMu.Lock()
 	defer hidMu.Unlock()
@@ -53,6 +58,8 @@ func (hidBackend) list() ([]deviceInfo, error) {
 		return nil, err
 	}
 	defer releaseHID()
+	enumMu.Lock()
+	defer enumMu.Unlock()
 	var dis []deviceInfo
 	err := hid.Enumerate(vendorID, productID, func(hi *hid.DeviceInfo) error {
 		dis = append(dis, fromHID(hi))
@@ -68,6 +75,7 @@ func (hidBackend) open(serial string) (transport, deviceInfo, error) {
 	if err := acquireHID(); err != nil {
 		return nil, deviceInfo{}, err
 	}
+	enumMu.Lock()
 	var dev *hid.Device
 	var err error
 	if serial == "" {
@@ -76,10 +84,12 @@ func (hidBackend) open(serial string) (transport, deviceInfo, error) {
 		dev, err = hid.Open(vendorID, productID, serial)
 	}
 	if err != nil {
+		enumMu.Unlock()
 		releaseHID()
 		return nil, deviceInfo{}, fmt.Errorf("%w: %q: %v", ErrNotFound, serial, err)
 	}
 	hi, err := dev.GetDeviceInfo()
+	enumMu.Unlock()
 	if err != nil {
 		dev.Close()
 		releaseHID()
