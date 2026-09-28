@@ -131,3 +131,17 @@ Releases follow [semantic versioning](https://semver.org/) and are tagged `vX.Y.
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+## Hardware test limitations
+
+`make test-hardware` and `make test-reconnect` need both a Nano and a Square attached. With
+one stick, or without a Nano, they fail straight away.
+
+### TODO
+
+- Open every supported stick attached, and skip rather than fail when there are none.
+- Skip the multi-device test with fewer than two sticks, and the report 10 probe without a
+  Square.
+- Let the reconnect test use any stick, chosen with `BLINKSTICK_SERIAL`, and name it in the
+  prompts.
+- Say in Development what each target needs.
