@@ -6,6 +6,11 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `ColourNames` lists every CSS colour name `ParseRGB` accepts, sorted, for shell completion.
+- `RGB.Hex` formats a colour as lower case `#rrggbb`.
+
 ## [0.2.0] - 2026-09-28
 
 ### Added

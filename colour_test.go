@@ -1,6 +1,7 @@
 package blinkstick
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -81,6 +82,88 @@ func TestColourNamesTable(t *testing.T) {
 		}
 		if _, err := parseHex(name, name); err == nil {
 			t.Errorf("colourNames key %q also parses as bare hex", name)
+		}
+	}
+}
+
+func TestColourNamesCoversTable(t *testing.T) {
+	names := ColourNames()
+	if len(names) != len(colourNames) {
+		t.Fatalf("ColourNames returned %d names, want %d", len(names), len(colourNames))
+	}
+	seen := make(map[string]bool, len(names))
+	for _, name := range names {
+		if seen[name] {
+			t.Errorf("ColourNames returned %q twice", name)
+		}
+		seen[name] = true
+		if _, ok := colourNames[name]; !ok {
+			t.Errorf("ColourNames returned %q, which is not in colourNames", name)
+		}
+	}
+}
+
+func TestColourNamesSorted(t *testing.T) {
+	names := ColourNames()
+	if !slices.IsSorted(names) {
+		t.Errorf("ColourNames is not sorted: %v", names)
+	}
+}
+
+func TestColourNamesRoundTrip(t *testing.T) {
+	for _, name := range ColourNames() {
+		got, err := ParseRGB(name)
+		if err != nil {
+			t.Errorf("ParseRGB(%q): %v", name, err)
+			continue
+		}
+		if want := colourNames[name]; got != want {
+			t.Errorf("ParseRGB(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestColourNamesFreshSlice(t *testing.T) {
+	first := ColourNames()
+	if len(first) == 0 {
+		t.Fatal("ColourNames returned no names")
+	}
+	want := first[0]
+	first[0] = "mutated"
+	if got := ColourNames()[0]; got != want {
+		t.Errorf("after mutating the returned slice, ColourNames()[0] = %q, want %q", got, want)
+	}
+}
+
+func TestHex(t *testing.T) {
+	tests := []struct {
+		c    RGB
+		want string
+	}{
+		{Off, "#000000"},
+		{White, "#ffffff"},
+		{RGB{R: 1}, "#010000"},
+		{RGB{G: 1}, "#000100"},
+		{RGB{B: 1}, "#000001"},
+		{RGB{255, 136, 0}, "#ff8800"},
+		{RGB{100, 149, 237}, "#6495ed"},
+	}
+	for _, tt := range tests {
+		if got := tt.c.Hex(); got != tt.want {
+			t.Errorf("%v.Hex() = %q, want %q", tt.c, got, tt.want)
+		}
+	}
+}
+
+func TestHexRoundTrip(t *testing.T) {
+	for _, c := range []RGB{Off, White, {R: 1}, {12, 34, 56}, {255, 136, 0}} {
+		got, err := ParseRGB(c.Hex())
+		if err != nil {
+			t.Errorf("ParseRGB(%q): %v", c.Hex(), err)
+			continue
+		}
+		if got != c {
+			t.Errorf("ParseRGB(%v.Hex()) = %v", c, got)
 		}
 	}
 }

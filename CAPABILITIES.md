@@ -42,6 +42,8 @@ Features this package adds in software. They work the same on every supported de
 | Brightness limit | v0.1.0 | `SetBrightnessLimit` |
 | Blink, pulse and morph | v0.1.0 | Cancellable with a context |
 | CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
+| List CSS colour names | v0.3.0 | `ColourNames`, sorted, for shell completion |
+| Colour as hex | v0.3.0 | `RGB.Hex`, lower case `#rrggbb` |
 | Random colour | v0.2.0 | `RandomRGB`, `RandomVivid` |
 | Inverse colours | v0.2.0 | `RGB.Inverse`, `SetInverse`. Not the firmware inverse mode |
 | Reconnect after unplug | v0.2.0 | Automatic, repaints the last frame. `ErrDisconnected` |

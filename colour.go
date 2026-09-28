@@ -2,6 +2,8 @@ package blinkstick
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -75,4 +77,16 @@ func (c RGB) scale(limit uint8) RGB {
 // Inverse returns c with each channel flipped: 255 - v.
 func (c RGB) Inverse() RGB {
 	return RGB{R: 255 - c.R, G: 255 - c.G, B: 255 - c.B}
+}
+
+// ColourNames returns every CSS colour name that ParseRGB accepts, lower case
+// and sorted. Each call returns a new slice, so callers may modify it.
+// ParseRGB gives the value of a name.
+func ColourNames() []string {
+	return slices.Sorted(maps.Keys(colourNames))
+}
+
+// Hex returns c as lower case "#rrggbb".
+func (c RGB) Hex() string {
+	return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B)
 }
