@@ -37,10 +37,10 @@ Features this package adds in software. They work the same on every supported de
 | Feature | Supported since | Notes |
 |---|---|---|
 | Model detection | v0.1.0 | From the serial and USB release number |
-| Colour from hex or `r,g,b` | v0.1.0 | `ParseRGB` |
+| Colour from hex or `r,g,b` | v0.1.0 | `ParseRGB`. Hex without the `#` since v0.2.0 |
 | Brightness limit | v0.1.0 | `SetBrightnessLimit` |
 | Blink, pulse and morph | v0.1.0 | Cancellable with a context |
-| CSS colour names | no | |
+| CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
 | Random colour | no | |
 | Inverse colours | no | |
 | Reconnect after unplug | no | |

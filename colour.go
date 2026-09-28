@@ -15,14 +15,25 @@ var (
 	White = RGB{R: 255, G: 255, B: 255}
 )
 
-// ParseRGB parses "#rgb", "#rrggbb" or "r,g,b" with decimal channels from
-// 0 to 255.
+// ParseRGB parses a colour in any of these forms:
+//
+//   - hex "#rgb" or "#rrggbb", with or without the "#"
+//   - "r,g,b" with decimal channels from 0 to 255
+//   - a CSS colour name such as "cornflowerblue", in any case
 func ParseRGB(s string) (RGB, error) {
 	s = strings.TrimSpace(s)
 	if hex, ok := strings.CutPrefix(s, "#"); ok {
 		return parseHex(s, hex)
 	}
+	if c, ok := colourNames[strings.ToLower(s)]; ok {
+		return c, nil
+	}
 	parts := strings.Split(s, ",")
+	if len(parts) == 1 {
+		// No CSS name is made only of hex digits, so a bare hex code cannot
+		// shadow a name.
+		return parseHex(s, s)
+	}
 	if len(parts) != 3 {
 		return RGB{}, invalid(s)
 	}
