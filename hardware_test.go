@@ -1,0 +1,204 @@
+//go:build hardware
+
+// Hardware tests need a BlinkStick Nano and a Square attached, and someone
+// watching the LEDs. Run them with: make test-hardware
+//
+// EEPROM RULE: these tests must never call SetInfoBlock or anything else that
+// writes EEPROM, because EEPROM wears with use. LED values live in RAM and
+// cause no wear.
+
+package blinkstick
+
+import (
+	"context"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// watch gives a person time to see each step.
+const watch = 700 * time.Millisecond
+
+// openBoth opens the attached Nano and Square and turns them off and closes
+// them when the test ends.
+func openBoth(t *testing.T) (nano, square *Device) {
+	t.Helper()
+	infos, err := List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	for _, info := range infos {
+		d, err := OpenSerial(info.Serial)
+		if err != nil {
+			t.Fatalf("OpenSerial(%s): %v", info.Serial, err)
+		}
+		t.Cleanup(func() {
+			d.Off()
+			d.Close()
+		})
+		switch info.Model {
+		case Nano:
+			nano = d
+		case Square:
+			square = d
+		}
+	}
+	if nano == nil || square == nil {
+		t.Fatalf("need a Nano and a Square attached, found %+v", infos)
+	}
+	return nano, square
+}
+
+func eachStick(t *testing.T, f func(t *testing.T, d *Device)) {
+	nano, square := openBoth(t)
+	for _, d := range []*Device{nano, square} {
+		t.Run(d.Info().Model.Name, func(t *testing.T) { f(t, d) })
+	}
+}
+
+func TestHardwareIdentity(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		info := d.Info()
+		t.Logf("%+v", info)
+		if !strings.HasPrefix(info.Serial, "BS") || info.Version == "" {
+			t.Errorf("serial %q, version %q", info.Serial, info.Version)
+		}
+		if info.Manufacturer != "Agile Innovative Ltd" {
+			t.Errorf("manufacturer %q", info.Manufacturer)
+		}
+	})
+}
+
+func TestHardwareFrameRoundTrip(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		leds := make([]RGB, d.Info().Model.LEDs)
+		for i := range leds {
+			leds[i] = RGB{R: uint8(40 + i*25), G: uint8(200 - i*20), B: uint8(i * 30)}
+		}
+		if err := d.SetFrame(leds); err != nil {
+			t.Fatalf("SetFrame: %v", err)
+		}
+		time.Sleep(watch)
+		got, err := d.Frame()
+		if err != nil {
+			t.Fatalf("Frame: %v", err)
+		}
+		if !slices.Equal(got, leds) {
+			t.Errorf("Frame = %v, want %v", got, leds)
+		}
+	})
+}
+
+func TestHardwareSetLEDAndLED(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		last := d.Info().Model.LEDs - 1
+		red := RGB{R: 255}
+		d.Off()
+		if err := d.SetLED(last, red); err != nil {
+			t.Fatalf("SetLED: %v", err)
+		}
+		time.Sleep(watch)
+		got, err := d.LED(last)
+		if err != nil || got != red {
+			t.Errorf("LED(%d) = %v, %v; want %v", last, got, err, red)
+		}
+		if first, _ := d.LED(0); first != Off {
+			t.Errorf("LED(0) = %v, want off", first)
+		}
+	})
+}
+
+func TestHardwareBrightnessLimit(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		d.SetBrightnessLimit(64)
+		defer d.SetBrightnessLimit(255)
+		if err := d.SetAll(White); err != nil {
+			t.Fatalf("SetAll: %v", err)
+		}
+		time.Sleep(watch)
+		got, _ := d.Frame()
+		if want := fill(d.Info().Model.LEDs, RGB{64, 64, 64}); !slices.Equal(got, want) {
+			t.Errorf("Frame = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestHardwareEffects(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		ctx := context.Background()
+		t.Log("watch: two white blinks, one green pulse, then a fade to blue")
+		if err := d.Blink(ctx, White, 400*time.Millisecond, 2); err != nil {
+			t.Fatalf("Blink: %v", err)
+		}
+		if err := d.Pulse(ctx, RGB{G: 255}, time.Second, 1); err != nil {
+			t.Fatalf("Pulse: %v", err)
+		}
+		if err := d.Morph(ctx, RGB{B: 255}, time.Second); err != nil {
+			t.Fatalf("Morph: %v", err)
+		}
+		got, _ := d.Frame()
+		if want := fill(d.Info().Model.LEDs, RGB{B: 255}); !slices.Equal(got, want) {
+			t.Errorf("after Morph Frame = %v, want %v", got, want)
+		}
+		time.Sleep(watch)
+	})
+}
+
+func TestHardwareInfoBlocksReadOnly(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		for n := 1; n <= 2; n++ {
+			b, err := d.InfoBlock(n)
+			if err != nil {
+				t.Fatalf("InfoBlock(%d): %v", n, err)
+			}
+			t.Logf("info block %d: %q", n, b)
+		}
+	})
+}
+
+func TestHardwareMultiDevice(t *testing.T) {
+	nano, square := openBoth(t)
+	var wg sync.WaitGroup
+	for _, d := range []*Device{nano, square} {
+		wg.Go(func() {
+			for i := range 20 {
+				c := RGB{R: 255}
+				if i%2 == 1 {
+					c = RGB{B: 255}
+				}
+				if err := d.SetAll(c); err != nil {
+					t.Errorf("%s SetAll: %v", d.Info().Model.Name, err)
+					return
+				}
+				time.Sleep(50 * time.Millisecond)
+			}
+		})
+	}
+	wg.Wait()
+
+	if err := nano.Close(); err != nil {
+		t.Fatalf("close Nano: %v", err)
+	}
+	green := RGB{G: 255}
+	if err := square.SetAll(green); err != nil {
+		t.Fatalf("Square after closing Nano: %v", err)
+	}
+	time.Sleep(watch)
+	if got, _ := square.Frame(); !slices.Equal(got, fill(8, green)) {
+		t.Errorf("Square Frame = %v, want all green", got)
+	}
+}
+
+// TestHardwareReport10Probe reads the Square's undocumented report 10. It
+// never writes to it.
+func TestHardwareReport10Probe(t *testing.T) {
+	_, square := openBoth(t)
+	buf := make([]byte, 3)
+	buf[0] = 10
+	square.mu.Lock()
+	err := square.getLocked(buf)
+	square.mu.Unlock()
+	t.Logf("report 10: err=%v bytes=% x", err, buf)
+}
