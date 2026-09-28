@@ -1,6 +1,6 @@
-module github.com/bawdo/blinkstick/go
+module github.com/bawdo/go-blinkstick
 
-go 1.27.1
+go 1.26
 
 require github.com/sstallion/go-hid v0.15.0
 

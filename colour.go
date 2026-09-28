@@ -1,0 +1,62 @@
+package blinkstick
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// RGB is a colour with 8 bits per channel.
+type RGB struct{ R, G, B uint8 }
+
+// Common values.
+var (
+	Off   = RGB{}
+	White = RGB{R: 255, G: 255, B: 255}
+)
+
+// ParseRGB parses "#rgb", "#rrggbb" or "r,g,b" with decimal channels from
+// 0 to 255.
+func ParseRGB(s string) (RGB, error) {
+	s = strings.TrimSpace(s)
+	if hex, ok := strings.CutPrefix(s, "#"); ok {
+		return parseHex(s, hex)
+	}
+	parts := strings.Split(s, ",")
+	if len(parts) != 3 {
+		return RGB{}, invalid(s)
+	}
+	var v [3]uint8
+	for i, p := range parts {
+		n, err := strconv.ParseUint(strings.TrimSpace(p), 10, 8)
+		if err != nil {
+			return RGB{}, invalid(s)
+		}
+		v[i] = uint8(n)
+	}
+	return RGB{R: v[0], G: v[1], B: v[2]}, nil
+}
+
+func parseHex(s, hex string) (RGB, error) {
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	if len(hex) != 6 {
+		return RGB{}, invalid(s)
+	}
+	n, err := strconv.ParseUint(hex, 16, 32)
+	if err != nil {
+		return RGB{}, invalid(s)
+	}
+	return RGB{R: uint8(n >> 16), G: uint8(n >> 8), B: uint8(n)}, nil
+}
+
+func invalid(s string) error {
+	return fmt.Errorf("blinkstick: invalid colour %q", s)
+}
+
+// scale caps each channel at limit, keeping the hue: v * limit / 255.
+func (c RGB) scale(limit uint8) RGB {
+	f := func(v uint8) uint8 { return uint8(uint16(v) * uint16(limit) / 255) }
+	return RGB{R: f(c.R), G: f(c.G), B: f(c.B)}
+}
