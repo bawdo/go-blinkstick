@@ -49,6 +49,30 @@ func ExampleParseRGB() {
 	// Output: {255 136 0}
 }
 
+func ExampleColourNames() {
+	// Offer names for shell completion, each described by its value.
+	for _, name := range blinkstick.ColourNames()[:3] {
+		c, _ := blinkstick.ParseRGB(name)
+		fmt.Printf("%s\t%s\n", name, c.Hex())
+	}
+	// Output:
+	// aliceblue	#f0f8ff
+	// antiquewhite	#faebd7
+	// aqua	#00ffff
+}
+
+func ExampleRGB_Hex() {
+	c, err := blinkstick.ParseRGB("cornflowerblue")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(c.Hex())
+	fmt.Println(blinkstick.RGB{R: 1}.Hex())
+	// Output:
+	// #6495ed
+	// #010000
+}
+
 func ExampleDevice_SetLED() {
 	d, err := blinkstick.Open()
 	if err != nil {
