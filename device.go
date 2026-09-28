@@ -183,3 +183,53 @@ func (d *Device) checkIndex(i int) error {
 	}
 	return nil
 }
+
+// backend finds and opens BlinkSticks. hidBackend is the real one; tests
+// swap in a fake.
+type backend interface {
+	list() ([]deviceInfo, error)
+	open(serial string) (transport, deviceInfo, error) // "" opens the first found
+}
+
+var sys backend = hidBackend{}
+
+// List returns every attached BlinkStick, including models this package does
+// not support yet (their Model.Name is "unknown").
+func List() ([]Info, error) {
+	dis, err := sys.list()
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]Info, len(dis))
+	for i, di := range dis {
+		infos[i] = newInfo(di)
+	}
+	return infos, nil
+}
+
+// Open opens the first BlinkStick found.
+func Open() (*Device, error) {
+	return open("")
+}
+
+// OpenSerial opens the BlinkStick with the given serial, as reported by
+// List.
+func OpenSerial(serial string) (*Device, error) {
+	if serial == "" {
+		return nil, fmt.Errorf("%w: empty serial", ErrNotFound)
+	}
+	return open(serial)
+}
+
+func open(serial string) (*Device, error) {
+	t, di, err := sys.open(serial)
+	if err != nil {
+		return nil, err
+	}
+	info := newInfo(di)
+	if info.Model == unknownModel {
+		t.Close()
+		return nil, fmt.Errorf("%w: %s (release %#04x)", ErrUnsupported, info.Serial, di.release)
+	}
+	return newDevice(t, info), nil
+}
