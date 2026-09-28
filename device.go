@@ -130,3 +130,56 @@ func fill(n int, c RGB) []RGB {
 	}
 	return leds
 }
+
+// Frame reads every LED back from the device.
+func (d *Device) Frame() ([]RGB, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.readFrameLocked()
+}
+
+// LED reads LED i back from the device.
+func (d *Device) LED(i int) (RGB, error) {
+	if err := d.checkIndex(i); err != nil {
+		return RGB{}, err
+	}
+	leds, err := d.Frame()
+	if err != nil {
+		return RGB{}, err
+	}
+	return leds[i], nil
+}
+
+// SetLED sets LED i to c and leaves the others as they are. It reads the
+// frame back and rewrites it, because setting a single LED directly (report
+// 5) needs a firmware mode that is unverified on v3 hardware.
+func (d *Device) SetLED(i int, c RGB) error {
+	if err := d.checkIndex(i); err != nil {
+		return err
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	leds, err := d.readFrameLocked()
+	if err != nil {
+		return err
+	}
+	leds[i] = c.scale(d.limit)
+	return d.writeFrameLocked(leds)
+}
+
+// readFrameLocked reads report 6. d.mu must be held.
+func (d *Device) readFrameLocked() ([]RGB, error) {
+	buf := make([]byte, frameReportSize)
+	buf[0] = reportFrame
+	if err := d.getLocked(buf); err != nil {
+		return nil, err
+	}
+	return decodeFrame(buf, d.info.Model.LEDs), nil
+}
+
+func (d *Device) checkIndex(i int) error {
+	if n := d.info.Model.LEDs; i < 0 || i >= n {
+		return fmt.Errorf("%w: LED %d, %s has %d", ErrOutOfRange, i, d.info.Model.Name, n)
+	}
+	return nil
+}

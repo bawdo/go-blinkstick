@@ -3,6 +3,7 @@ package blinkstick
 import (
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 )
 
@@ -119,5 +120,88 @@ func TestInfo(t *testing.T) {
 	d, _ := openFake(Nano)
 	if got := d.Info(); got.Model != Nano || got.Serial != "BS000001-3.0" {
 		t.Errorf("Info = %+v", got)
+	}
+}
+
+func TestFrameReadsBack(t *testing.T) {
+	d, _ := openFake(Nano)
+	leds := []RGB{{R: 10}, {G: 20}}
+	d.SetFrame(leds)
+	got, err := d.Frame()
+	if err != nil {
+		t.Fatalf("Frame: %v", err)
+	}
+	if !slices.Equal(got, leds) {
+		t.Errorf("Frame = %v, want %v", got, leds)
+	}
+}
+
+func TestLED(t *testing.T) {
+	d, _ := openFake(Nano)
+	d.SetFrame([]RGB{{R: 10}, {G: 20}})
+	got, err := d.LED(1)
+	if err != nil {
+		t.Fatalf("LED: %v", err)
+	}
+	if got != (RGB{G: 20}) {
+		t.Errorf("LED(1) = %v, want {0 20 0}", got)
+	}
+}
+
+func TestSetLEDKeepsOthers(t *testing.T) {
+	d, ft := openFake(Square)
+	d.SetAll(RGB{B: 50})
+	if err := d.SetLED(3, RGB{R: 255}); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	want := fill(8, RGB{B: 50})
+	want[3] = RGB{R: 255}
+	if got := ft.frame(8); !slices.Equal(got, want) {
+		t.Errorf("frame = %v, want %v", got, want)
+	}
+}
+
+func TestSetLEDDoesNotRescaleOthers(t *testing.T) {
+	d, ft := openFake(Square)
+	d.SetBrightnessLimit(128)
+	d.SetAll(White)
+	if err := d.SetLED(0, White); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	if got := ft.frame(8); !slices.Equal(got, fill(8, RGB{128, 128, 128})) {
+		t.Errorf("frame = %v, want all 128", got)
+	}
+}
+
+func TestIndexOutOfRange(t *testing.T) {
+	d, ft := openFake(Nano)
+	for _, i := range []int{-1, 2, 8} {
+		if _, err := d.LED(i); !errors.Is(err, ErrOutOfRange) {
+			t.Errorf("LED(%d) = %v, want ErrOutOfRange", i, err)
+		}
+		if err := d.SetLED(i, White); !errors.Is(err, ErrOutOfRange) {
+			t.Errorf("SetLED(%d) = %v, want ErrOutOfRange", i, err)
+		}
+	}
+	if ft.sendCount() != 0 {
+		t.Errorf("sends = %d, want 0", ft.sendCount())
+	}
+}
+
+func TestSetLEDConcurrent(t *testing.T) {
+	d, ft := openFake(Square)
+	var wg sync.WaitGroup
+	for i := range Square.LEDs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := d.SetLED(i, White); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := ft.frame(8); !slices.Equal(got, fill(8, White)) {
+		t.Errorf("frame = %v, want all white (a lost update means SetLED is not atomic)", got)
 	}
 }
