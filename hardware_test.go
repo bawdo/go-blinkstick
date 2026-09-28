@@ -3,9 +3,10 @@
 // Hardware tests need a BlinkStick Nano and a Square attached, and someone
 // watching the LEDs. Run them with: make test-hardware
 //
-// EEPROM RULE: these tests must never call SetInfoBlock or anything else that
-// writes EEPROM, because EEPROM wears with use. LED values live in RAM and
-// cause no wear.
+// EEPROM RULE: these tests must never call SetInfoBlock, SetName or anything
+// else that writes EEPROM, because EEPROM wears with use. Reading info blocks
+// and names is fine. LED values live in RAM and cause no wear. Set a name by
+// hand if you want the name tests to do more than read.
 
 package blinkstick
 
@@ -16,6 +17,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 // hold returns how long a step on d stays visible. The Square has four times
@@ -261,4 +263,52 @@ func TestHardwareConcurrentOpen(t *testing.T) {
 		}
 	}
 	wg.Wait()
+}
+
+// TestHardwareName reads each stick's name. It never writes one.
+func TestHardwareName(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		name, err := d.Name()
+		if err != nil {
+			t.Fatalf("Name: %v", err)
+		}
+		t.Logf("name %q", name)
+		if !utf8.ValidString(name) {
+			t.Errorf("name %q is not valid UTF-8", name)
+		}
+	})
+}
+
+// TestHardwareListNamedAndOpenName lists names with no stick open, then opens
+// each named stick by its name. It never writes a name.
+func TestHardwareListNamedAndOpenName(t *testing.T) {
+	named, err := ListNamed()
+	if err != nil {
+		t.Fatalf("ListNamed: %v", err)
+	}
+	count := map[string]int{}
+	for _, n := range named {
+		t.Logf("%s %s name %q busy %v", n.Serial, n.Model.Name, n.Name, n.Busy)
+		if n.Busy {
+			t.Errorf("%s busy with nothing else holding it", n.Serial)
+		}
+		count[n.Name]++
+	}
+	for _, n := range named {
+		if n.Name == "" || count[n.Name] > 1 || n.Model.Name == "unknown" {
+			continue
+		}
+		d, err := OpenName(n.Name)
+		if err != nil {
+			t.Errorf("OpenName(%q): %v", n.Name, err)
+			continue
+		}
+		if d.Info().Serial != n.Serial {
+			t.Errorf("OpenName(%q) opened %s, want %s", n.Name, d.Info().Serial, n.Serial)
+		}
+		d.Close()
+	}
+	if len(count) == 1 && count[""] > 0 {
+		t.Log("no stick has a name, so OpenName was not exercised; set one by hand to cover it")
+	}
 }

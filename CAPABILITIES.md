@@ -16,6 +16,7 @@ Features built into the BlinkStick firmware.
 |---|---|---|---|---|
 | List attached sticks | yes | yes | v0.1.0 | `List` |
 | Open the first stick or one by serial | yes | yes | v0.1.0 | `Open`, `OpenSerial` |
+| Name a stick and open it by name | yes | yes | v0.2.0 | `SetName`, `Name`, `OpenName`, `ListNamed`. Stored in info block 1 |
 | Several sticks open at once | yes | yes | v0.1.0 | |
 | Serial and firmware version | yes | yes | v0.1.0 | `Info` |
 | Manufacturer and product strings | yes | yes | v0.1.0 | `Info` |

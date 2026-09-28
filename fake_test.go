@@ -1,3 +1,8 @@
+// Unit tests run against fakeTransport, which keeps reports in memory. They
+// never touch a real stick, so writing info blocks here causes no EEPROM
+// wear. Automated tests must never write EEPROM on real hardware: see the
+// EEPROM RULE in hardware_test.go.
+
 package blinkstick
 
 import (
@@ -95,6 +100,7 @@ func openFake(m Model) (*Device, *fakeTransport) {
 type fakeDevice struct {
 	info deviceInfo
 	t    *fakeTransport
+	busy bool // held by another process, so open fails
 }
 
 type fakeBackend struct {
@@ -112,6 +118,9 @@ func (b *fakeBackend) list() ([]deviceInfo, error) {
 func (b *fakeBackend) open(serial string) (transport, deviceInfo, error) {
 	for _, d := range b.devices {
 		if serial == "" || d.info.serial == serial {
+			if d.busy {
+				return nil, deviceInfo{}, fmt.Errorf("%w: %s: busy", ErrNotFound, serial)
+			}
 			return d.t, d.info, nil
 		}
 	}
@@ -140,6 +149,7 @@ func threeSticks() (*fakeBackend, map[string]*fakeTransport) {
 		"nano": newFakeTransport(), "square": newFakeTransport(), "flex": newFakeTransport(),
 	}
 	return &fakeBackend{devices: []fakeDevice{
-		{nanoInfo, ts["nano"]}, {squareInfo, ts["square"]}, {flexInfo, ts["flex"]},
+		{info: nanoInfo, t: ts["nano"]}, {info: squareInfo, t: ts["square"]},
+		{info: flexInfo, t: ts["flex"]},
 	}}, ts
 }

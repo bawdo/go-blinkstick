@@ -12,6 +12,8 @@ All notable changes to this project are recorded here. The format follows
 - `ParseRGB` accepts hex without the leading `#`, for example `ff8800` or `f80`.
 - `RandomRGB` for any colour and `RandomVivid` for a bright, fully saturated one.
 - `RGB.Inverse`, and `SetInverse` to flip every colour written to a stick.
+- Stick names, stored in info block 1: `SetName`, `Name`, `OpenName` and `ListNamed`.
+- `ErrInvalidName` and `ErrDuplicateName`.
 
 ## [0.1.0] - 2026-09-28
 

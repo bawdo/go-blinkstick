@@ -95,3 +95,22 @@ func ExampleRandomVivid() {
 
 	d.SetAll(blinkstick.RandomVivid())
 }
+
+func ExampleOpenName() {
+	d, err := blinkstick.OpenName("desk")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer d.Close()
+	d.SetAll(blinkstick.RGB{G: 255})
+}
+
+func ExampleListNamed() {
+	named, err := blinkstick.ListNamed()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, n := range named {
+		fmt.Printf("%s %s %q busy=%v\n", n.Serial, n.Model.Name, n.Name, n.Busy)
+	}
+}

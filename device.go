@@ -14,6 +14,9 @@ var (
 	ErrUnsupported = errors.New("blinkstick: unsupported model")
 	ErrOutOfRange  = errors.New("blinkstick: out of range")
 	ErrClosed      = errors.New("blinkstick: device closed")
+
+	ErrInvalidName   = errors.New("blinkstick: invalid name")
+	ErrDuplicateName = errors.New("blinkstick: name used by more than one stick")
 )
 
 // transferAttempts covers the firmware being busy straight after a write and

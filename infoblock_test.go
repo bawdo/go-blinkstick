@@ -1,3 +1,6 @@
+// These tests write info blocks through fakeTransport only, never to a real
+// stick. See the note at the top of fake_test.go.
+
 package blinkstick
 
 import (
