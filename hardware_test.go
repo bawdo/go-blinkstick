@@ -44,6 +44,9 @@ var palette = []RGB{
 	{R: 255, G: 80}, // orange
 }
 
+// paletteNames names each entry of palette, in the same order.
+var paletteNames = []string{"red", "blue", "green", "yellow", "cyan", "magenta", "white", "orange"}
+
 // openBoth opens the attached Nano and Square and turns them off and closes
 // them when the test ends.
 func openBoth(t *testing.T) (nano, square *Device) {
@@ -96,8 +99,9 @@ func TestHardwareIdentity(t *testing.T) {
 
 func TestHardwareFrameRoundTrip(t *testing.T) {
 	eachStick(t, func(t *testing.T, d *Device) {
-		leds := palette[:d.Info().Model.LEDs]
-		t.Log("watch: red, blue, green, yellow, cyan, magenta, white, orange in LED order")
+		n := d.Info().Model.LEDs
+		leds := palette[:n]
+		t.Logf("watch: %s in LED order", strings.Join(paletteNames[:n], ", "))
 		if err := d.SetFrame(leds); err != nil {
 			t.Fatalf("SetFrame: %v", err)
 		}
