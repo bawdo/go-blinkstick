@@ -3,6 +3,7 @@ package blinkstick
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -126,5 +127,37 @@ func TestReconnectKeepsSettings(t *testing.T) {
 	}
 	if got := nt.frame(2); !slices.Equal(got, fill(2, RGB{128, 128, 128})) {
 		t.Errorf("frame = %v, want brightness limit kept", got)
+	}
+}
+
+func TestDisconnectedErrorText(t *testing.T) {
+	d, b, _ := openNano(t)
+	b.unplug(0)
+	err := d.SetAll(White)
+	if want := "blinkstick: device disconnected: BS072777-3.0"; err == nil || err.Error() != want {
+		t.Errorf("error = %v, want %q", err, want)
+	}
+	if !errors.Is(err, ErrDisconnected) || !errors.Is(err, ErrNotFound) {
+		t.Errorf("error %v is not ErrDisconnected and ErrNotFound", err)
+	}
+	if !errors.Is(ErrDisconnected, ErrNotFound) {
+		t.Error("ErrDisconnected does not match ErrNotFound")
+	}
+	if errors.Unwrap(err) == nil {
+		t.Error("reopen cause lost")
+	}
+}
+
+func TestDisconnectedRepaintFailureKeepsCause(t *testing.T) {
+	d, b, _ := openNano(t)
+	d.SetAll(White)
+	b.unplug(0)
+	nt := b.replug(0)
+	// The repaint fails, then the stick answers. Name is not a frame send,
+	// so reconnect repaints before retrying it.
+	nt.fail = transferAttempts
+	_, err := d.Name()
+	if !errors.Is(err, ErrDisconnected) || !strings.Contains(err.Error(), "repaint") {
+		t.Errorf("error = %v, want ErrDisconnected mentioning the repaint", err)
 	}
 }

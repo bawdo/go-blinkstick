@@ -11,7 +11,7 @@ import (
 // also returned when a stick is attached but cannot be opened, for example
 // because another process holds it (macOS opens devices exclusively).
 // ErrDisconnected means an open stick was unplugged and could not be
-// reopened; it wraps ErrNotFound.
+// reopened; errors.Is also matches it to ErrNotFound.
 var (
 	ErrNotFound    = errors.New("blinkstick: device not found")
 	ErrUnsupported = errors.New("blinkstick: unsupported model")
@@ -20,8 +20,34 @@ var (
 
 	ErrInvalidName   = errors.New("blinkstick: invalid name")
 	ErrDuplicateName = errors.New("blinkstick: name used by more than one stick")
-	ErrDisconnected  = fmt.Errorf("blinkstick: device disconnected: %w", ErrNotFound)
+	ErrDisconnected  = error(&disconnectedError{})
 )
+
+// disconnectedError is returned when a stick cannot be reopened. It matches
+// both ErrDisconnected and ErrNotFound, and unwraps to the reason.
+type disconnectedError struct {
+	serial string
+	cause  error
+}
+
+func (e *disconnectedError) Error() string {
+	msg := "blinkstick: device disconnected"
+	if e.serial != "" {
+		msg += ": " + e.serial
+	}
+	// "Not found" is what disconnected means, so only other causes add
+	// anything worth reading.
+	if e.cause != nil && !errors.Is(e.cause, ErrNotFound) {
+		msg += ": " + e.cause.Error()
+	}
+	return msg
+}
+
+func (e *disconnectedError) Is(target error) bool {
+	return target == ErrDisconnected || target == ErrNotFound
+}
+
+func (e *disconnectedError) Unwrap() error { return e.cause }
 
 // transferAttempts covers the firmware being busy straight after a write and
 // intermittent IOHIDDeviceSetReport failures on macOS (go-hid issue #15).
@@ -202,7 +228,7 @@ func (d *Device) tryLocked(f func(transport) (int, error)) error {
 func (d *Device) reconnectLocked(repaint bool) error {
 	t, err := d.reopen()
 	if err != nil {
-		return fmt.Errorf("%w: %s: %v", ErrDisconnected, d.info.Serial, err)
+		return &disconnectedError{serial: d.info.Serial, cause: err}
 	}
 	d.t = t
 	if !repaint || d.last == nil {
@@ -212,7 +238,8 @@ func (d *Device) reconnectLocked(repaint bool) error {
 	if err := d.tryLocked(func(t transport) (int, error) { return t.SendFeatureReport(p) }); err != nil {
 		d.t.Close()
 		d.t = nil
-		return fmt.Errorf("%w: %s: repaint after reopening: %v", ErrDisconnected, d.info.Serial, err)
+		return &disconnectedError{serial: d.info.Serial,
+			cause: fmt.Errorf("repaint after reopening: %w", transferError("send", reportFrame, err))}
 	}
 	return nil
 }
