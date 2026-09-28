@@ -42,7 +42,7 @@ Features this package adds in software. They work the same on every supported de
 | Blink, pulse and morph | v0.1.0 | Cancellable with a context |
 | CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
 | Random colour | v0.2.0 | `RandomRGB`, `RandomVivid` |
-| Inverse colours | no | |
+| Inverse colours | v0.2.0 | `RGB.Inverse`, `SetInverse`. Not the firmware inverse mode |
 | Reconnect after unplug | no | |
 
 ## Platforms

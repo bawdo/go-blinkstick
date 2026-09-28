@@ -71,3 +71,8 @@ func (c RGB) scale(limit uint8) RGB {
 	f := func(v uint8) uint8 { return uint8(uint16(v) * uint16(limit) / 255) }
 	return RGB{R: f(c.R), G: f(c.G), B: f(c.B)}
 }
+
+// Inverse returns c with each channel flipped: 255 - v.
+func (c RGB) Inverse() RGB {
+	return RGB{R: 255 - c.R, G: 255 - c.G, B: 255 - c.B}
+}

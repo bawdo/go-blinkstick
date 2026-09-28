@@ -30,10 +30,11 @@ type transport interface {
 // Device is an open BlinkStick. Its methods are safe for concurrent use,
 // but two effects running at once on one Device interleave their frames.
 type Device struct {
-	mu    sync.Mutex
-	t     transport // nil once closed
-	info  Info
-	limit uint8
+	mu      sync.Mutex
+	t       transport // nil once closed
+	info    Info
+	limit   uint8
+	inverse bool
 }
 
 func newDevice(t transport, info Info) *Device {
@@ -66,6 +67,16 @@ func (d *Device) SetBrightnessLimit(limit uint8) {
 	d.limit = limit
 }
 
+// SetInverse flips every channel written from now on to 255 - v, after any
+// brightness limit, for LEDs wired so that 255 means off. Frame and LED flip
+// values back, so they return what was written. It does not repaint the
+// LEDs, so call it before setting them.
+func (d *Device) SetInverse(on bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.inverse = on
+}
+
 // SetAll sets every LED to c.
 func (d *Device) SetAll(c RGB) error {
 	return d.SetFrame(fill(d.info.Model.LEDs, c))
@@ -91,10 +102,23 @@ func (d *Device) SetFrame(leds []RGB) error {
 	return d.writeFrameLocked(scaled)
 }
 
-// writeFrameLocked sends LED values as given, without scaling. d.mu must be
-// held.
+// writeFrameLocked sends LED values without scaling, flipped if inverse is
+// on. d.mu must be held.
 func (d *Device) writeFrameLocked(leds []RGB) error {
-	return d.sendLocked(encodeFrame(leds))
+	return d.sendLocked(encodeFrame(d.flipLocked(leds)))
+}
+
+// flipLocked returns leds inverted if inverse is on, and leds itself if not.
+// Inverting is its own undo, so reads use it too. d.mu must be held.
+func (d *Device) flipLocked(leds []RGB) []RGB {
+	if !d.inverse {
+		return leds
+	}
+	out := make([]RGB, len(leds))
+	for i, c := range leds {
+		out[i] = c.Inverse()
+	}
+	return out
 }
 
 func (d *Device) sendLocked(p []byte) error {
@@ -135,16 +159,14 @@ func fill(n int, c RGB) []RGB {
 
 // Frame reads every LED back from the device. Values are those stored on the
 // device, so they reflect any brightness limit in force when they were
-// written.
+// written. With SetInverse on they are flipped back.
 func (d *Device) Frame() ([]RGB, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.readFrameLocked()
 }
 
-// LED reads LED i back from the device. Values are those stored on the
-// device, so they reflect any brightness limit in force when they were
-// written.
+// LED reads LED i back from the device, as Frame does.
 func (d *Device) LED(i int) (RGB, error) {
 	if err := d.checkIndex(i); err != nil {
 		return RGB{}, err
@@ -180,7 +202,7 @@ func (d *Device) readFrameLocked() ([]RGB, error) {
 	if err := d.getLocked(buf); err != nil {
 		return nil, err
 	}
-	return decodeFrame(buf, d.info.Model.LEDs), nil
+	return d.flipLocked(decodeFrame(buf, d.info.Model.LEDs)), nil
 }
 
 func (d *Device) checkIndex(i int) error {
