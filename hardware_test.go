@@ -363,3 +363,20 @@ func TestHardwareReconnect(t *testing.T) {
 		t.Errorf("Frame after replug = %v, want %v repainted", got, orange)
 	}
 }
+
+func TestHardwareInverse(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		d.SetInverse(true)
+		defer d.SetInverse(false)
+		red := RGB{R: 255}
+		if err := d.SetAll(red); err != nil {
+			t.Fatalf("SetAll: %v", err)
+		}
+		t.Log("watch: all LEDs cyan (red inverted)")
+		time.Sleep(hold(d))
+		got, _ := d.Frame()
+		if want := fill(d.Info().Model.LEDs, red); !slices.Equal(got, want) {
+			t.Errorf("Frame = %v, want %v flipped back", got, want)
+		}
+	})
+}
