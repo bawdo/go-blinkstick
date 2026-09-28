@@ -18,8 +18,31 @@ import (
 	"time"
 )
 
-// watch gives a person time to see each step.
-const watch = 700 * time.Millisecond
+// hold returns how long a step on d stays visible. The Square has four times
+// as many LEDs as the Nano, so it is held twice as long.
+func hold(d *Device) time.Duration {
+	if d.Info().Model == Square {
+		return 8 * time.Second
+	}
+	return 4 * time.Second
+}
+
+// pace scales effect durations: 1 for the Nano, 2 for the Square.
+func pace(d *Device) time.Duration {
+	return hold(d) / (4 * time.Second)
+}
+
+// palette holds saturated, easily told apart values, in LED order.
+var palette = []RGB{
+	{R: 255},         // red
+	{B: 255},         // blue
+	{G: 255},         // green
+	{R: 255, G: 255}, // yellow
+	{G: 255, B: 255}, // cyan
+	{R: 255, B: 255}, // magenta
+	White,
+	{R: 255, G: 80}, // orange
+}
 
 // openBoth opens the attached Nano and Square and turns them off and closes
 // them when the test ends.
@@ -73,14 +96,12 @@ func TestHardwareIdentity(t *testing.T) {
 
 func TestHardwareFrameRoundTrip(t *testing.T) {
 	eachStick(t, func(t *testing.T, d *Device) {
-		leds := make([]RGB, d.Info().Model.LEDs)
-		for i := range leds {
-			leds[i] = RGB{R: uint8(40 + i*25), G: uint8(200 - i*20), B: uint8(i * 30)}
-		}
+		leds := palette[:d.Info().Model.LEDs]
+		t.Log("watch: red, blue, green, yellow, cyan, magenta, white, orange in LED order")
 		if err := d.SetFrame(leds); err != nil {
 			t.Fatalf("SetFrame: %v", err)
 		}
-		time.Sleep(watch)
+		time.Sleep(hold(d))
 		got, err := d.Frame()
 		if err != nil {
 			t.Fatalf("Frame: %v", err)
@@ -99,7 +120,8 @@ func TestHardwareSetLEDAndLED(t *testing.T) {
 		if err := d.SetLED(last, red); err != nil {
 			t.Fatalf("SetLED: %v", err)
 		}
-		time.Sleep(watch)
+		t.Logf("watch: only LED %d lit, red", last)
+		time.Sleep(hold(d))
 		got, err := d.LED(last)
 		if err != nil || got != red {
 			t.Errorf("LED(%d) = %v, %v; want %v", last, got, err, red)
@@ -117,7 +139,8 @@ func TestHardwareBrightnessLimit(t *testing.T) {
 		if err := d.SetAll(White); err != nil {
 			t.Fatalf("SetAll: %v", err)
 		}
-		time.Sleep(watch)
+		t.Log("watch: all LEDs dim white, brightness limited to 64")
+		time.Sleep(hold(d))
 		got, _ := d.Frame()
 		if want := fill(d.Info().Model.LEDs, RGB{64, 64, 64}); !slices.Equal(got, want) {
 			t.Errorf("Frame = %v, want %v", got, want)
@@ -128,21 +151,23 @@ func TestHardwareBrightnessLimit(t *testing.T) {
 func TestHardwareEffects(t *testing.T) {
 	eachStick(t, func(t *testing.T, d *Device) {
 		ctx := context.Background()
-		t.Log("watch: two white blinks, one green pulse, then a fade to blue")
-		if err := d.Blink(ctx, White, 400*time.Millisecond, 2); err != nil {
+		p := pace(d)
+		t.Logf("watch: two white blinks (%v period), one green pulse (%v), then a fade to blue (%v), then blue held",
+			800*time.Millisecond*p, 2*time.Second*p, 2*time.Second*p)
+		if err := d.Blink(ctx, White, 800*time.Millisecond*p, 2); err != nil {
 			t.Fatalf("Blink: %v", err)
 		}
-		if err := d.Pulse(ctx, RGB{G: 255}, time.Second, 1); err != nil {
+		if err := d.Pulse(ctx, RGB{G: 255}, 2*time.Second*p, 1); err != nil {
 			t.Fatalf("Pulse: %v", err)
 		}
-		if err := d.Morph(ctx, RGB{B: 255}, time.Second); err != nil {
+		if err := d.Morph(ctx, RGB{B: 255}, 2*time.Second*p); err != nil {
 			t.Fatalf("Morph: %v", err)
 		}
 		got, _ := d.Frame()
 		if want := fill(d.Info().Model.LEDs, RGB{B: 255}); !slices.Equal(got, want) {
 			t.Errorf("after Morph Frame = %v, want %v", got, want)
 		}
-		time.Sleep(watch)
+		time.Sleep(hold(d))
 	})
 }
 
@@ -163,6 +188,7 @@ func TestHardwareMultiDevice(t *testing.T) {
 	var wg sync.WaitGroup
 	for _, d := range []*Device{nano, square} {
 		wg.Go(func() {
+			p := pace(d)
 			for i := range 20 {
 				c := RGB{R: 255}
 				if i%2 == 1 {
@@ -172,12 +198,15 @@ func TestHardwareMultiDevice(t *testing.T) {
 					t.Errorf("%s SetAll: %v", d.Info().Model.Name, err)
 					return
 				}
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond * p)
 			}
 		})
 	}
 	wg.Wait()
 
+	if err := nano.Off(); err != nil {
+		t.Errorf("Nano Off: %v", err)
+	}
 	if err := nano.Close(); err != nil {
 		t.Fatalf("close Nano: %v", err)
 	}
@@ -185,7 +214,7 @@ func TestHardwareMultiDevice(t *testing.T) {
 	if err := square.SetAll(green); err != nil {
 		t.Fatalf("Square after closing Nano: %v", err)
 	}
-	time.Sleep(watch)
+	time.Sleep(hold(square))
 	if got, _ := square.Frame(); !slices.Equal(got, fill(8, green)) {
 		t.Errorf("Square Frame = %v, want all green", got)
 	}
