@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"sync"
@@ -317,7 +318,10 @@ func TestHardwareListNamedAndOpenName(t *testing.T) {
 
 // TestHardwareReconnect needs someone to unplug and replug the Nano, so it
 // only runs with BLINKSTICK_UNPLUG=1: make test-reconnect. It writes LEDs
-// only.
+// only. A replugged stick does not always register with macOS, even with
+// no program running, so the test checks IOKit directly and reports whether
+// macOS saw the Nano come back. If it did not, the failure is the stick or
+// port, not this package.
 func TestHardwareReconnect(t *testing.T) {
 	if os.Getenv("BLINKSTICK_UNPLUG") != "1" {
 		t.Skip("set BLINKSTICK_UNPLUG=1 to run; needs the Nano unplugged and replugged by hand")
@@ -348,14 +352,20 @@ func TestHardwareReconnect(t *testing.T) {
 	t.Log("ACTION: plug the Nano back in (60 seconds)")
 	var got []RGB
 	var err error
+	serial := nano.Info().Serial
+	osSaw := false
 	for deadline := time.Now().Add(60 * time.Second); time.Now().Before(deadline); {
+		if !osSaw && usbHas(serial) {
+			osSaw = true
+			t.Logf("macOS sees %s on USB again", serial)
+		}
 		if got, err = nano.Frame(); err == nil {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 	if err != nil {
-		t.Fatalf("never reconnected: %v", err)
+		t.Fatalf("never reconnected (macOS saw the Nano on USB: %v): %v", osSaw, err)
 	}
 	t.Log("watch: the Nano should be orange again")
 	time.Sleep(hold(nano))
@@ -379,4 +389,11 @@ func TestHardwareInverse(t *testing.T) {
 			t.Errorf("Frame = %v, want %v flipped back", got, want)
 		}
 	})
+}
+
+// usbHas reports whether macOS lists a USB device with the given serial,
+// asking IOKit directly rather than through hidapi.
+func usbHas(serial string) bool {
+	out, err := exec.Command("ioreg", "-p", "IOUSB", "-l", "-w0").Output()
+	return err == nil && strings.Contains(string(out), `"USB Serial Number" = "`+serial+`"`)
 }
