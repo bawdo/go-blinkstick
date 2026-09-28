@@ -13,7 +13,10 @@ import (
 	"testing"
 )
 
-var errBusy = errors.New("general error")
+var (
+	errBusy = errors.New("general error")
+	errGone = errors.New("device unplugged")
+)
 
 // fakeTransport behaves like BlinkStick firmware: a get returns the last
 // report sent with the same ID, or zeros.
@@ -21,7 +24,8 @@ type fakeTransport struct {
 	mu      sync.Mutex
 	reports map[byte][]byte
 	sends   [][]byte
-	fail    int // fail this many transfers before succeeding
+	fail    int  // fail this many transfers before succeeding
+	gone    bool // unplugged: every transfer fails
 	closed  bool
 }
 
@@ -33,6 +37,9 @@ func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sends = append(f.sends, bytes.Clone(p))
+	if f.gone {
+		return 0, errGone
+	}
 	if f.fail > 0 {
 		f.fail--
 		return 0, errBusy
@@ -44,6 +51,9 @@ func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
 func (f *fakeTransport) GetFeatureReport(p []byte) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.gone {
+		return 0, errGone
+	}
 	if f.fail > 0 {
 		f.fail--
 		return 0, errBusy
@@ -104,10 +114,42 @@ type fakeDevice struct {
 }
 
 type fakeBackend struct {
+	mu      sync.Mutex
 	devices []fakeDevice
 }
 
+// unplug makes device i vanish: its transport fails and it cannot be opened.
+func (b *fakeBackend) unplug(i int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.devices[i].t.mu.Lock()
+	b.devices[i].t.gone = true
+	b.devices[i].t.mu.Unlock()
+	b.devices[i].busy = true
+}
+
+// replug brings device i back as a fresh transport with its LEDs off, as a
+// real stick is after losing power. Info blocks survive, as EEPROM does.
+func (b *fakeBackend) replug(i int) *fakeTransport {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	old := b.devices[i].t
+	nt := newFakeTransport()
+	old.mu.Lock()
+	for _, id := range []byte{reportInfo1, reportInfo2} {
+		if r := old.reports[id]; r != nil {
+			nt.reports[id] = bytes.Clone(r)
+		}
+	}
+	old.mu.Unlock()
+	b.devices[i].t = nt
+	b.devices[i].busy = false
+	return nt
+}
+
 func (b *fakeBackend) list() ([]deviceInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	var dis []deviceInfo
 	for _, d := range b.devices {
 		dis = append(dis, d.info)
@@ -116,6 +158,8 @@ func (b *fakeBackend) list() ([]deviceInfo, error) {
 }
 
 func (b *fakeBackend) open(serial string) (transport, deviceInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	for _, d := range b.devices {
 		if serial == "" || d.info.serial == serial {
 			if d.busy {

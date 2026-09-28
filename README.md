@@ -101,6 +101,9 @@ macOS lets only one process open a stick at a time.
 ## Good to know
 
 - `Blink`, `Pulse` and `Morph` block until they finish. Cancel them with the context.
+- If a stick is unplugged, the next call that fails reopens it by serial and repaints the last
+  colours written. If it is still missing you get `ErrDisconnected`, and the next call tries
+  again. Brightness limit and inverse settings carry over.
 - `SetBrightnessLimit` caps how bright the LEDs get. A Square at full white draws about 500 mA.
 - `SetInfoBlock` and `SetName` write to EEPROM on the device, which wears out with heavy use.
   Do not call them in a loop.
@@ -112,6 +115,7 @@ make help           # list targets
 make test           # vet and unit tests, no hardware needed
 make build          # compile
 make test-hardware  # tests against a real Nano and Square
+make test-reconnect # you unplug and replug the Nano when told
 ```
 
 **Automated tests must never write EEPROM on a real stick.** EEPROM wears out, and a test suite

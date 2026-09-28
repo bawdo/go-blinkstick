@@ -44,7 +44,7 @@ Features this package adds in software. They work the same on every supported de
 | CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
 | Random colour | v0.2.0 | `RandomRGB`, `RandomVivid` |
 | Inverse colours | v0.2.0 | `RGB.Inverse`, `SetInverse`. Not the firmware inverse mode |
-| Reconnect after unplug | no | |
+| Reconnect after unplug | v0.2.0 | Automatic, repaints the last frame. `ErrDisconnected` |
 
 ## Platforms
 

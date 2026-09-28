@@ -12,6 +12,8 @@ package blinkstick
 
 import (
 	"context"
+	"errors"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -310,5 +312,54 @@ func TestHardwareListNamedAndOpenName(t *testing.T) {
 	}
 	if len(count) == 1 && count[""] > 0 {
 		t.Log("no stick has a name, so OpenName was not exercised; set one by hand to cover it")
+	}
+}
+
+// TestHardwareReconnect needs someone to unplug and replug the Nano, so it
+// only runs with BLINKSTICK_UNPLUG=1: make test-reconnect. It writes LEDs
+// only.
+func TestHardwareReconnect(t *testing.T) {
+	if os.Getenv("BLINKSTICK_UNPLUG") != "1" {
+		t.Skip("set BLINKSTICK_UNPLUG=1 to run; needs the Nano unplugged and replugged by hand")
+	}
+	nano, _ := openBoth(t)
+	orange := []RGB{{R: 255, G: 80}, {R: 255, G: 80}}
+	if err := nano.SetFrame(orange); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
+
+	t.Log("ACTION: unplug the Nano now (60 seconds)")
+	var gone error
+	for deadline := time.Now().Add(60 * time.Second); time.Now().Before(deadline); {
+		if _, err := nano.Frame(); err != nil {
+			gone = err
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if gone == nil {
+		t.Fatal("no error seen while unplugged")
+	}
+	t.Logf("while unplugged: %v", gone)
+	if !errors.Is(gone, ErrDisconnected) {
+		t.Errorf("error while unplugged = %v, want ErrDisconnected", gone)
+	}
+
+	t.Log("ACTION: plug the Nano back in (60 seconds)")
+	var got []RGB
+	var err error
+	for deadline := time.Now().Add(60 * time.Second); time.Now().Before(deadline); {
+		if got, err = nano.Frame(); err == nil {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("never reconnected: %v", err)
+	}
+	t.Log("watch: the Nano should be orange again")
+	time.Sleep(hold(nano))
+	if !slices.Equal(got, orange) {
+		t.Errorf("Frame after replug = %v, want %v repainted", got, orange)
 	}
 }

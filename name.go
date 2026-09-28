@@ -124,5 +124,5 @@ func openAny(serial string) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newDevice(t, newInfo(di)), nil
+	return newReconnectingDevice(t, newInfo(di)), nil
 }

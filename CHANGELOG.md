@@ -14,6 +14,8 @@ All notable changes to this project are recorded here. The format follows
 - `RGB.Inverse`, and `SetInverse` to flip every colour written to a stick.
 - Stick names, stored in info block 1: `SetName`, `Name`, `OpenName` and `ListNamed`.
 - `ErrInvalidName` and `ErrDuplicateName`.
+- Reconnect after unplug: a `Device` reopens its stick by serial and repaints the last frame.
+  `ErrDisconnected` when the stick is still missing.
 
 ## [0.1.0] - 2026-09-28
 

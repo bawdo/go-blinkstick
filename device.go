@@ -3,12 +3,15 @@ package blinkstick
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 )
 
 // Errors returned by this package. Check them with errors.Is. ErrNotFound is
 // also returned when a stick is attached but cannot be opened, for example
 // because another process holds it (macOS opens devices exclusively).
+// ErrDisconnected means an open stick was unplugged and could not be
+// reopened; it wraps ErrNotFound.
 var (
 	ErrNotFound    = errors.New("blinkstick: device not found")
 	ErrUnsupported = errors.New("blinkstick: unsupported model")
@@ -17,6 +20,7 @@ var (
 
 	ErrInvalidName   = errors.New("blinkstick: invalid name")
 	ErrDuplicateName = errors.New("blinkstick: name used by more than one stick")
+	ErrDisconnected  = fmt.Errorf("blinkstick: device disconnected: %w", ErrNotFound)
 )
 
 // transferAttempts covers the firmware being busy straight after a write and
@@ -32,9 +36,17 @@ type transport interface {
 
 // Device is an open BlinkStick. Its methods are safe for concurrent use,
 // but two effects running at once on one Device interleave their frames.
+//
+// If the stick is unplugged, the next call that fails reopens it by serial,
+// repaints the last frame written (a replugged stick comes back dark) and
+// carries on. If the stick is still missing it returns ErrDisconnected, and
+// the call after that tries again.
 type Device struct {
 	mu      sync.Mutex
-	t       transport // nil once closed
+	t       transport // nil once closed or while disconnected
+	closed  bool
+	reopen  func() (transport, error) // nil if the device cannot reconnect
+	last    []RGB                     // last frame written, before flipping
 	info    Info
 	limit   uint8
 	inverse bool
@@ -53,8 +65,12 @@ func (d *Device) Info() Info {
 func (d *Device) Close() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.t == nil {
+	if d.closed {
 		return ErrClosed
+	}
+	d.closed = true
+	if d.t == nil { // disconnected, nothing left to release
+		return nil
 	}
 	err := d.t.Close()
 	d.t = nil
@@ -108,7 +124,11 @@ func (d *Device) SetFrame(leds []RGB) error {
 // writeFrameLocked sends LED values without scaling, flipped if inverse is
 // on. d.mu must be held.
 func (d *Device) writeFrameLocked(leds []RGB) error {
-	return d.sendLocked(encodeFrame(d.flipLocked(leds)))
+	if err := d.sendLocked(encodeFrame(d.flipLocked(leds))); err != nil {
+		return err
+	}
+	d.last = slices.Clone(leds)
+	return nil
 }
 
 // flipLocked returns leds inverted if inverse is on, and leds itself if not.
@@ -136,17 +156,68 @@ func (d *Device) getLocked(p []byte) error {
 	})
 }
 
-// transferLocked runs f up to transferAttempts times. d.mu must be held.
+// transferLocked runs f up to transferAttempts times. If they all fail and
+// the device can reconnect, it reopens the stick and runs f again. d.mu must
+// be held.
 func (d *Device) transferLocked(op string, id byte, f func(transport) (int, error)) error {
-	if d.t == nil {
+	if d.closed {
 		return ErrClosed
 	}
+	if d.t != nil {
+		err := d.tryLocked(f)
+		if err == nil {
+			return nil
+		}
+		if d.reopen == nil {
+			return transferError(op, id, err)
+		}
+		d.t.Close()
+		d.t = nil
+	}
+	// A failed frame send is about to be replaced, so repainting the old
+	// frame first would only flash it.
+	if err := d.reconnectLocked(!(op == "send" && id == reportFrame)); err != nil {
+		return err
+	}
+	if err := d.tryLocked(f); err != nil {
+		return transferError(op, id, err)
+	}
+	return nil
+}
+
+// tryLocked runs f up to transferAttempts times. d.mu must be held and d.t
+// must not be nil.
+func (d *Device) tryLocked(f func(transport) (int, error)) error {
 	var err error
 	for range transferAttempts {
 		if _, err = f(d.t); err == nil {
 			return nil
 		}
 	}
+	return err
+}
+
+// reconnectLocked reopens the stick by serial and, if repaint is set,
+// rewrites the last frame. d.mu must be held and d.t must be nil.
+func (d *Device) reconnectLocked(repaint bool) error {
+	t, err := d.reopen()
+	if err != nil {
+		return fmt.Errorf("%w: %s: %v", ErrDisconnected, d.info.Serial, err)
+	}
+	d.t = t
+	if !repaint || d.last == nil {
+		return nil
+	}
+	p := encodeFrame(d.flipLocked(d.last))
+	if err := d.tryLocked(func(t transport) (int, error) { return t.SendFeatureReport(p) }); err != nil {
+		d.t.Close()
+		d.t = nil
+		return fmt.Errorf("%w: %s: repaint after reopening: %v", ErrDisconnected, d.info.Serial, err)
+	}
+	return nil
+}
+
+func transferError(op string, id byte, err error) error {
 	return fmt.Errorf("blinkstick: %s report %d failed after %d attempts: %w",
 		op, id, transferAttempts, err)
 }
@@ -264,5 +335,17 @@ func open(serial string) (*Device, error) {
 		t.Close()
 		return nil, fmt.Errorf("%w: %s (release %#04x)", ErrUnsupported, info.Serial, di.release)
 	}
-	return newDevice(t, info), nil
+	return newReconnectingDevice(t, info), nil
+}
+
+// newReconnectingDevice returns a Device that reopens its stick by serial
+// through the current backend if it is unplugged.
+func newReconnectingDevice(t transport, info Info) *Device {
+	d := newDevice(t, info)
+	b := sys
+	d.reopen = func() (transport, error) {
+		t, _, err := b.open(info.Serial)
+		return t, err
+	}
+	return d
 }
