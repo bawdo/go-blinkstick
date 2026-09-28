@@ -6,7 +6,9 @@ import (
 	"sync"
 )
 
-// Errors returned by this package. Check them with errors.Is.
+// Errors returned by this package. Check them with errors.Is. ErrNotFound is
+// also returned when a stick is attached but cannot be opened, for example
+// because another process holds it (macOS opens devices exclusively).
 var (
 	ErrNotFound    = errors.New("blinkstick: device not found")
 	ErrUnsupported = errors.New("blinkstick: unsupported model")
@@ -131,14 +133,18 @@ func fill(n int, c RGB) []RGB {
 	return leds
 }
 
-// Frame reads every LED back from the device.
+// Frame reads every LED back from the device. Values are those stored on the
+// device, so they reflect any brightness limit in force when they were
+// written.
 func (d *Device) Frame() ([]RGB, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.readFrameLocked()
 }
 
-// LED reads LED i back from the device.
+// LED reads LED i back from the device. Values are those stored on the
+// device, so they reflect any brightness limit in force when they were
+// written.
 func (d *Device) LED(i int) (RGB, error) {
 	if err := d.checkIndex(i); err != nil {
 		return RGB{}, err
@@ -207,7 +213,9 @@ func List() ([]Info, error) {
 	return infos, nil
 }
 
-// Open opens the first BlinkStick found.
+// Open opens the first BlinkStick found. If the first stick found is a model
+// this package does not support, Open returns ErrUnsupported even when a
+// supported stick is also attached; use List and OpenSerial to choose one.
 func Open() (*Device, error) {
 	return open("")
 }

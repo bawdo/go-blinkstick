@@ -6,7 +6,8 @@ import (
 )
 
 // InfoBlock reads user data block n (1 or 2) from the device's EEPROM, with
-// trailing NUL bytes removed.
+// trailing NUL bytes removed. Because trailing NUL bytes are trimmed, data
+// that ends in NUL bytes does not round-trip.
 func (d *Device) InfoBlock(n int) ([]byte, error) {
 	id, err := infoReport(n)
 	if err != nil {
