@@ -41,7 +41,7 @@ Features this package adds in software. They work the same on every supported de
 | Brightness limit | v0.1.0 | `SetBrightnessLimit` |
 | Blink, pulse and morph | v0.1.0 | Cancellable with a context |
 | CSS colour names | v0.2.0 | `ParseRGB`, all 148 from CSS Color Level 4 |
-| Random colour | no | |
+| Random colour | v0.2.0 | `RandomRGB`, `RandomVivid` |
 | Inverse colours | no | |
 | Reconnect after unplug | no | |
 

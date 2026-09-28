@@ -85,3 +85,13 @@ func ExampleDevice_SetBrightnessLimit() {
 	d.SetBrightnessLimit(64) // about a quarter of full brightness
 	d.SetAll(blinkstick.White)
 }
+
+func ExampleRandomVivid() {
+	d, err := blinkstick.Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer d.Close()
+
+	d.SetAll(blinkstick.RandomVivid())
+}
