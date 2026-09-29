@@ -53,5 +53,5 @@ Features this package adds in software. They work the same on every supported de
 | Platform | Supported since |
 |---|---|
 | macOS | v0.1.0 |
-| Linux | no |
+| Linux | v0.4.0 |
 | Windows | no |

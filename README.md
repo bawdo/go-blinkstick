@@ -11,8 +11,8 @@ of BlinkStick.
 
 | Device | macOS | Linux |
 |---|---|---|
-| BlinkStick Nano | yes | not yet |
-| BlinkStick Square | yes | not yet |
+| BlinkStick Nano | yes | yes |
+| BlinkStick Square | yes | yes |
 
 See [CAPABILITIES.md](CAPABILITIES.md) for every feature these devices have and what this
 package supports so far.
@@ -20,8 +20,11 @@ package supports so far.
 ## Requirements
 
 - Go 1.26 or later.
-- cgo. On macOS, install the Xcode command line tools with `xcode-select --install`. Builds
-  with `CGO_ENABLED=0` will not work.
+- cgo. Builds with `CGO_ENABLED=0` will not work.
+- On macOS, install the Xcode command line tools with `xcode-select --install`.
+- On Linux, install `libudev` development headers (`libudev-dev` on Debian/Ubuntu,
+  `systemd-libs` on Arch, `libudev-devel` on Fedora) to build, and see [Linux](#linux) below
+  for the udev rule needed to open a stick without root.
 - Nothing else. hidapi is bundled.
 
 ## Install
@@ -95,7 +98,9 @@ attached stick to read its name, so a stick another program holds shows up in `L
 `ErrDuplicateName` if two sticks share one.
 
 Each open `Device` is independent, and its methods are safe to call from several goroutines.
-macOS lets only one process open a stick at a time.
+macOS lets only one process open a stick at a time; Linux does not, so `Busy` in `ListNamed`
+will rarely be true there — another process holding a stick open does not stop it being opened
+again.
 
 ## Good to know
 
@@ -106,6 +111,21 @@ macOS lets only one process open a stick at a time.
 - `SetBrightnessLimit` caps how bright the LEDs get. A Square at full white draws about 500 mA.
 - `SetInfoBlock` and `SetName` write to EEPROM on the device, which wears out with heavy use.
   Do not call them in a loop.
+
+## Linux
+
+BlinkStick devices are owned by root by default, so opening one needs a udev rule. Install the
+one in this repo:
+
+```sh
+sudo cp udev/60-blinkstick.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Then unplug and replug the stick (or reboot). This grants access to whoever is logged in at the
+desktop (via systemd-logind's `uaccess`), not a udev group, so no group membership or new login
+session is needed beyond replugging the device.
 
 ## Development
 

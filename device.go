@@ -9,7 +9,8 @@ import (
 
 // Errors returned by this package. Check them with errors.Is. ErrNotFound is
 // also returned when a stick is attached but cannot be opened, for example
-// because another process holds it (macOS opens devices exclusively).
+// because another process holds it (macOS opens devices exclusively; Linux
+// does not, so this does not happen there).
 // ErrDisconnected means an open stick was unplugged and could not be
 // reopened; errors.Is also matches it to ErrNotFound.
 var (

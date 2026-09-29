@@ -4,6 +4,13 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Support for the BlinkStick Nano and Square on Linux, using hidapi's hidraw backend.
+- `udev/60-blinkstick.rules` grants a logged-in desktop user access to a stick without root.
+
 ## [0.3.0] - 2026-09-28
 
 ### Added
@@ -38,6 +45,7 @@ All notable changes to this project are recorded here. The format follows
 - `Blink`, `Pulse` and `Morph` effects, cancellable with a context.
 - Safe to list and open sticks from several goroutines.
 
-[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/bawdo/go-blinkstick/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bawdo/go-blinkstick/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/bawdo/go-blinkstick/releases/tag/v0.1.0
