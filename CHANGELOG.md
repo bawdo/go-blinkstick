@@ -4,7 +4,7 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
-## [0.9.0] - 2026-09-30
+## [0.4.0] - 2026-09-30
 
 ### Added
 
@@ -52,8 +52,8 @@ All notable changes to this project are recorded here. The format follows
 - `Blink`, `Pulse` and `Morph` effects, cancellable with a context.
 - Safe to list and open sticks from several goroutines.
 
-[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...v0.9.0
+[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bawdo/go-blinkstick/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bawdo/go-blinkstick/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/bawdo/go-blinkstick/releases/tag/v0.1.0
