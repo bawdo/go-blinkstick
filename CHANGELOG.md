@@ -9,13 +9,14 @@ All notable changes to this project are recorded here. The format follows
 ### Added
 
 - `Mode` type with the constants `ModeRGB`, `ModeRGBInverse`, `ModeWS2812` and `ModeWS2812Mirror`, and `Mode.String`.
-- `Device.Mode` reads the device mode, and `Device.SetMode` changes it.
+- `Device.Mode` reads the device mode, and `Device.SetMode` changes it (writes EEPROM; skipped when unchanged).
 - `Model.SupportsMode` reports which modes a model allows.
 - `ErrUnsupportedMode`, returned by `SetMode` for a mode the model does not support.
 
 ### Changed
 
 - `SetLED` sends one report 5 instead of reading and rewriting the whole frame.
+- `Model` gained an unexported field; caller-built models no longer equal predefined ones, support no modes, and `%+v` output includes a `modes` field.
 
 ## [0.3.0] - 2026-09-28
 
