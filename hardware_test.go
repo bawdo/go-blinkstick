@@ -3,7 +3,7 @@
 // Hardware tests need a BlinkStick Nano and a Square attached, and someone
 // watching the LEDs. Run them with: make test-hardware
 //
-// EEPROM RULE: these tests must never call SetInfoBlock, SetName or anything
+// EEPROM RULE: these tests must never call SetInfoBlock, SetName, SetMode or anything
 // else that writes EEPROM, because EEPROM wears with use. Reading info blocks
 // and names is fine. LED values live in RAM and cause no wear. Set a name by
 // hand if you want the name tests to do more than read.

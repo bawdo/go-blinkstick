@@ -23,7 +23,7 @@
 //
 // # EEPROM
 //
-// [Device.SetInfoBlock] and [Device.SetName] write to EEPROM on the device,
+// [Device.SetInfoBlock], [Device.SetName] and [Device.SetMode] write to EEPROM on the device,
 // which wears with use. Setting LEDs does not.
 //
 // This package is unofficial and not affiliated with Agile Innovative.

@@ -177,3 +177,15 @@ func TestReconnectRepaintsSetLED(t *testing.T) {
 		t.Errorf("device frame = %v, want %v", got, want)
 	}
 }
+
+func TestModeSurvivesReplug(t *testing.T) {
+	d, b, _ := openNano(t)
+	if err := d.SetMode(ModeWS2812Mirror); err != nil {
+		t.Fatalf("SetMode: %v", err)
+	}
+	b.unplug(0)
+	b.replug(0)
+	if got, err := d.Mode(); err != nil || got != ModeWS2812Mirror {
+		t.Errorf("Mode() after replug = %v, %v, want %v, nil", got, err, ModeWS2812Mirror)
+	}
+}

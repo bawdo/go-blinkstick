@@ -44,3 +44,29 @@ func (d *Device) Mode() (Mode, error) {
 	}
 	return Mode(buf[1]), nil
 }
+
+// SetMode switches the device to mode m. It returns ErrUnsupportedMode if the
+// model does not allow m, which covers modes 0 and 1 on every model here.
+//
+// SetMode writes EEPROM, which wears with use, so call it once and not in a
+// loop. It skips the write when the stick is already in m. The change takes
+// effect at once, with no replug, and the write blocks for about 50 ms.
+//
+// Mode 3 makes report 1 from other software colour every LED. This package's
+// LED methods work the same in modes 2 and 3.
+func (d *Device) SetMode(m Mode) error {
+	if !d.info.Model.SupportsMode(m) {
+		return fmt.Errorf("%w: %v on %s", ErrUnsupportedMode, m, d.info.Model.Name)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	buf := make([]byte, modeReportSize)
+	buf[0] = reportMode
+	if err := d.getLocked(buf); err != nil {
+		return err
+	}
+	if Mode(buf[1]) == m {
+		return nil
+	}
+	return d.sendLocked([]byte{reportMode, byte(m)})
+}

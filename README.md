@@ -104,7 +104,7 @@ macOS lets only one process open a stick at a time.
   colours written. If it is still missing you get `ErrDisconnected`, and the next call tries
   again. Brightness limit and inverse settings carry over.
 - `SetBrightnessLimit` caps how bright the LEDs get. A Square at full white draws about 500 mA.
-- `SetInfoBlock` and `SetName` write to EEPROM on the device, which wears out with heavy use.
+- `SetInfoBlock`, `SetName` and `SetMode` write to EEPROM on the device, which wears out with heavy use.
   Do not call them in a loop.
 
 ## Development
@@ -120,7 +120,7 @@ make test-reconnect # you unplug and replug the Nano when told
 **Automated tests must never write EEPROM on a real stick.** EEPROM wears out, and a test suite
 runs far more often than anyone renames a stick. Unit tests write info blocks and names only to
 an in-memory fake. Hardware tests may read names and info blocks, and write LEDs (RAM, no wear),
-but never call `SetInfoBlock`, `SetName` or anything else that writes EEPROM. To cover
+but never call `SetInfoBlock`, `SetName`, `SetMode` or anything else that writes EEPROM. To cover
 `OpenName` on hardware, set a name by hand once.
 
 ## Versioning

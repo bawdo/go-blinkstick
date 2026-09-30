@@ -18,9 +18,10 @@ var (
 	ErrOutOfRange  = errors.New("blinkstick: out of range")
 	ErrClosed      = errors.New("blinkstick: device closed")
 
-	ErrInvalidName   = errors.New("blinkstick: invalid name")
-	ErrDuplicateName = errors.New("blinkstick: name used by more than one stick")
-	ErrDisconnected  = error(&disconnectedError{})
+	ErrUnsupportedMode = errors.New("blinkstick: mode not supported by this model")
+	ErrInvalidName     = errors.New("blinkstick: invalid name")
+	ErrDuplicateName   = errors.New("blinkstick: name used by more than one stick")
+	ErrDisconnected    = error(&disconnectedError{})
 )
 
 // disconnectedError is returned when a stick cannot be reopened. It matches

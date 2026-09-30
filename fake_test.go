@@ -227,3 +227,13 @@ func threeSticks() (*fakeBackend, map[string]*fakeTransport) {
 		{info: flexInfo, t: ts["flex"]},
 	}}, ts
 }
+
+// lastSend returns the most recent send attempt, or nil if there was none.
+func (f *fakeTransport) lastSend() []byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.sends) == 0 {
+		return nil
+	}
+	return f.sends[len(f.sends)-1]
+}
