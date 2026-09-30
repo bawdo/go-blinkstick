@@ -11,9 +11,11 @@ const (
 const (
 	reportInfo1 = 2
 	reportInfo2 = 3
+	reportMode  = 4
 	reportLED   = 5
 	reportFrame = 6
 
+	modeReportSize  = 2 // ID, mode
 	ledReportSize   = 6 // ID, channel, index, R, G, B
 	frameLEDs       = 8
 	frameReportSize = 2 + frameLEDs*3 // ID, channel, 8 x (G, R, B)

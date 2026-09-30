@@ -397,3 +397,18 @@ func usbHas(serial string) bool {
 	out, err := exec.Command("ioreg", "-p", "IOUSB", "-l", "-w0").Output()
 	return err == nil && strings.Contains(string(out), `"USB Serial Number" = "`+serial+`"`)
 }
+
+// TestHardwareModeReadOnly reads the mode only. It must never call SetMode:
+// that writes EEPROM (see the EEPROM RULE above).
+func TestHardwareModeReadOnly(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		m, err := d.Mode()
+		if err != nil {
+			t.Fatalf("Mode: %v", err)
+		}
+		t.Logf("mode = %v", m)
+		if m != ModeWS2812 && m != ModeWS2812Mirror {
+			t.Errorf("Mode = %v, want %v or %v", m, ModeWS2812, ModeWS2812Mirror)
+		}
+	})
+}

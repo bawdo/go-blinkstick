@@ -31,7 +31,8 @@ type fakeTransport struct {
 }
 
 func newFakeTransport() *fakeTransport {
-	return &fakeTransport{reports: map[byte][]byte{}}
+	// A real stick reads mode 2 (WS2812), which every LED feature needs.
+	return &fakeTransport{reports: map[byte][]byte{reportMode: {reportMode, byte(ModeWS2812)}}}
 }
 
 func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
@@ -157,14 +158,15 @@ func (b *fakeBackend) unplug(i int) {
 }
 
 // replug brings device i back as a fresh transport with its LEDs off, as a
-// real stick is after losing power. Info blocks survive, as EEPROM does.
+// real stick is after losing power. Info blocks and the mode survive, as
+// EEPROM does.
 func (b *fakeBackend) replug(i int) *fakeTransport {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	old := b.devices[i].t
 	nt := newFakeTransport()
 	old.mu.Lock()
-	for _, id := range []byte{reportInfo1, reportInfo2} {
+	for _, id := range []byte{reportInfo1, reportInfo2, reportMode} {
 		if r := old.reports[id]; r != nil {
 			nt.reports[id] = bytes.Clone(r)
 		}
