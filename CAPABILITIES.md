@@ -25,8 +25,12 @@ Features built into the BlinkStick firmware.
 | Set every LED at once | yes | yes | v0.1.0 | `SetFrame` |
 | Read LED values back | yes | yes | v0.1.0 | `Frame`, `LED` |
 | Info blocks 1 and 2 | yes | yes | v0.1.0 | `InfoBlock`, `SetInfoBlock`. 32 bytes each, stored in EEPROM |
-| Set one LED directly (report 5) | unverified | unverified | no | Needs firmware mode 2 |
-| Device mode: normal, inverse, WS2812 (report 4) | unverified | unverified | no | Stored in EEPROM |
+| Set one LED directly (report 5) | yes | yes | no | `[5, channel, index, R, G, B]`, RGB order (the frame is GRB). Works in mode 2. The channel byte is ignored and the index is not range checked |
+| Read device mode (report 4) | yes | yes | no | `[4, mode]`. Both read mode 2 |
+| Set device mode (report 4) | unverified | unverified | no | Stored in EEPROM. Writing the current mode back is accepted, but a change to another mode has not been tried |
+| Mode 2, WS2812 | yes | yes | n/a | The mode both are in, and the one every LED feature here needs. Probably the factory default |
+| Mode 3, WS2812 mirror | unverified | unverified | no | Report 1 colour goes to every LED. Documented upstream, not tried |
+| Modes 0 and 1, normal and inverse | n/a | n/a | n/a | For the BlinkStick Pro's RGB outputs. Upstream reports a Nano in mode 1 going dark until replugged |
 | Report 10 | n/a | unknown | no | Square only, 2 bytes, read returns 00 00, purpose unknown |
 | LED count setting (report 0x81) | n/a | n/a | n/a | BlinkStick Flex only |
 | 16, 32 and 64 LED frames (reports 7 to 9) | n/a | n/a | n/a | For longer strips |
