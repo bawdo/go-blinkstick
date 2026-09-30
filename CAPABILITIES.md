@@ -31,7 +31,8 @@ Features built into the BlinkStick firmware.
 | Mode 2, WS2812 | yes | yes | n/a | The mode both are in, and the one every LED feature here needs. Probably the factory default |
 | Mode 3, WS2812 mirror | yes | yes | v0.9.0 | Changes only report 1, whose colour goes to every LED. Reports 5 and 6 behave as in mode 2 |
 | Modes 0 and 1, normal and inverse | n/a | n/a | n/a | For the BlinkStick Pro's RGB outputs. Upstream reports a Nano in mode 1 going dark until replugged. `SetMode` refuses them with `ErrUnsupportedMode` |
-| Report 10 | n/a | unknown | no | Square only, 2 bytes, read returns 00 00, purpose unknown |
+| Set LED 0, or every LED in mode 3 (report 1) | yes | yes | n/a | `[1, R, G, B]`, RGB order. Used by other BlinkStick software. Here `SetLED(0, c)` and `SetAll` do the same job in either mode |
+| Report 10 | n/a | unknown | no | Square only, 2 bytes, reads 00 00. Undocumented; waiting on the manufacturer |
 | LED count setting (report 0x81) | n/a | n/a | n/a | BlinkStick Flex only |
 | 16, 32 and 64 LED frames (reports 7 to 9) | n/a | n/a | n/a | For longer strips |
 
