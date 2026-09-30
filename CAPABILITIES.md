@@ -21,11 +21,11 @@ Features built into the BlinkStick firmware.
 | Serial and firmware version | yes | yes | v0.1.0 | `Info` |
 | Manufacturer and product strings | yes | yes | v0.1.0 | `Info` |
 | Set all LEDs | yes | yes | v0.1.0 | `SetAll`, `Off` |
-| Set one LED | yes | yes | v0.1.0 | `SetLED` |
+| Set one LED | yes | yes | v0.1.0 | `SetLED`. Since `v0.9.0` it uses report 5 |
 | Set every LED at once | yes | yes | v0.1.0 | `SetFrame` |
 | Read LED values back | yes | yes | v0.1.0 | `Frame`, `LED` |
 | Info blocks 1 and 2 | yes | yes | v0.1.0 | `InfoBlock`, `SetInfoBlock`. 32 bytes each, stored in EEPROM |
-| Set one LED directly (report 5) | yes | yes | no | `[5, channel, index, R, G, B]`, RGB order (the frame is GRB). Works in mode 2. The channel byte is ignored and the index is not range checked |
+| Set one LED directly (report 5) | yes | yes | v0.9.0 | `SetLED`. `[5, channel, index, R, G, B]`, RGB order (the frame is GRB). Works in mode 2. The channel byte is ignored and the index is not range checked |
 | Read device mode (report 4) | yes | yes | no | `[4, mode]`. Both read mode 2 |
 | Set device mode (report 4) | unverified | unverified | no | Stored in EEPROM. Writing the current mode back is accepted, but a change to another mode has not been tried |
 | Mode 2, WS2812 | yes | yes | n/a | The mode both are in, and the one every LED feature here needs. Probably the factory default |

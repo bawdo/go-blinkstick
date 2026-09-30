@@ -161,3 +161,19 @@ func TestDisconnectedRepaintFailureKeepsCause(t *testing.T) {
 		t.Errorf("error = %v, want ErrDisconnected mentioning the repaint", err)
 	}
 }
+
+func TestReconnectRepaintsSetLED(t *testing.T) {
+	d, b, _ := openNano(t)
+	d.SetFrame([]RGB{{R: 255}, {G: 255}})
+	if err := d.SetLED(1, RGB{B: 255}); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	b.unplug(0)
+	nt := b.replug(0)
+	if _, err := d.Frame(); err != nil {
+		t.Fatalf("Frame after replug: %v", err)
+	}
+	if got, want := nt.frame(2), []RGB{{R: 255}, {B: 255}}; !slices.Equal(got, want) {
+		t.Errorf("device frame = %v, want %v", got, want)
+	}
+}

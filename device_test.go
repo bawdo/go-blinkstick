@@ -205,3 +205,69 @@ func TestSetLEDConcurrent(t *testing.T) {
 		t.Errorf("frame = %v, want all white (a lost update means SetLED is not atomic)", got)
 	}
 }
+
+func TestSetLEDSendsOneReport5(t *testing.T) {
+	d, ft := openFake(Square)
+	d.SetAll(RGB{B: 50})
+	sends, gets := ft.sendCount(), ft.getCount()
+	if err := d.SetLED(3, RGB{R: 255}); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	if got := ft.sendCount() - sends; got != 1 {
+		t.Fatalf("sends = %d, want 1", got)
+	}
+	if got, want := ft.sends[sends], []byte{5, 0, 3, 255, 0, 0}; !slices.Equal(got, want) {
+		t.Errorf("sent % x, want % x", got, want)
+	}
+	if got := ft.getCount() - gets; got != 0 {
+		t.Errorf("gets = %d, want 0", got)
+	}
+	want := fill(8, RGB{B: 50})
+	want[3] = RGB{R: 255}
+	if got := ft.frame(8); !slices.Equal(got, want) {
+		t.Errorf("frame = %v, want %v", got, want)
+	}
+}
+
+func TestSetLEDSeedsLastFrameOnce(t *testing.T) {
+	d, ft := openFake(Nano)
+	ft.SendFeatureReport(encodeFrame([]RGB{{G: 9}, {B: 9}}))
+	if err := d.SetLED(0, RGB{R: 1}); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	if got := ft.getCount(); got != 1 {
+		t.Errorf("gets = %d, want 1", got)
+	}
+	if want := []RGB{{R: 1}, {B: 9}}; !slices.Equal(d.last, want) {
+		t.Errorf("last = %v, want %v", d.last, want)
+	}
+	if err := d.SetLED(1, RGB{R: 2}); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	if got := ft.getCount(); got != 1 {
+		t.Errorf("gets = %d, want still 1", got)
+	}
+	if want := []RGB{{R: 1}, {R: 2}}; !slices.Equal(d.last, want) {
+		t.Errorf("last = %v, want %v", d.last, want)
+	}
+}
+
+func TestSetLEDBrightnessAndInverse(t *testing.T) {
+	d, ft := openFake(Nano)
+	d.SetAll(Off)
+	d.SetBrightnessLimit(128)
+	d.SetInverse(true)
+	if err := d.SetLED(0, White); err != nil {
+		t.Fatalf("SetLED: %v", err)
+	}
+	if got, want := ft.sends[len(ft.sends)-1], []byte{5, 0, 0, 127, 127, 127}; !slices.Equal(got, want) {
+		t.Errorf("sent % x, want % x", got, want)
+	}
+	got, err := d.LED(0)
+	if err != nil {
+		t.Fatalf("LED: %v", err)
+	}
+	if want := (RGB{128, 128, 128}); got != want {
+		t.Errorf("LED(0) = %v, want %v", got, want)
+	}
+}

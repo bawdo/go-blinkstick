@@ -24,6 +24,7 @@ type fakeTransport struct {
 	mu      sync.Mutex
 	reports map[byte][]byte
 	sends   [][]byte
+	gets    int  // GetFeatureReport calls, failed ones included
 	fail    int  // fail this many transfers before succeeding
 	gone    bool // unplugged: every transfer fails
 	closed  bool
@@ -45,12 +46,33 @@ func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
 		return 0, errBusy
 	}
 	f.reports[p[0]] = bytes.Clone(p)
+	if p[0] == reportLED {
+		f.applyLEDLocked(p)
+	}
 	return len(p), nil
+}
+
+// applyLEDLocked stores a report 5 in the frame as the firmware does: RGB on
+// the wire becomes GRB in the slot. The channel byte is ignored and slots of
+// 8 or more are dropped. f.mu must be held.
+func (f *fakeTransport) applyLEDLocked(p []byte) {
+	slot := int(p[2])
+	if slot >= frameLEDs {
+		return
+	}
+	buf := f.reports[reportFrame]
+	if buf == nil {
+		buf = make([]byte, frameReportSize)
+		buf[0] = reportFrame
+		f.reports[reportFrame] = buf
+	}
+	buf[2+slot*3], buf[3+slot*3], buf[4+slot*3] = p[4], p[3], p[5]
 }
 
 func (f *fakeTransport) GetFeatureReport(p []byte) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
 	if f.gone {
 		return 0, errGone
 	}
@@ -100,6 +122,12 @@ func (f *fakeTransport) sendCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.sends)
+}
+
+func (f *fakeTransport) getCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.gets
 }
 
 func openFake(m Model) (*Device, *fakeTransport) {
