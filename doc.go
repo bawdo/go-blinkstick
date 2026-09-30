@@ -1,5 +1,5 @@
 // Package blinkstick drives BlinkStick USB LED devices. The Nano and Square
-// are supported on macOS.
+// are supported on macOS and Linux.
 //
 // Open a stick, set its LEDs and close it:
 //
@@ -18,8 +18,9 @@
 // # Requirements
 //
 // The package uses cgo and a bundled copy of hidapi. On macOS, install the
-// Xcode command line tools. macOS lets only one process open a stick at a
-// time.
+// Xcode command line tools; macOS lets only one process open a stick at a
+// time. On Linux, install libudev's development headers, and see the udev
+// rule under "Linux" in the README for opening a stick without root.
 //
 // # EEPROM
 //
