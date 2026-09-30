@@ -4,12 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-09-30
 
 ### Added
 
-- Support for the BlinkStick Nano and Square on Linux, using hidapi's hidraw backend.
-- `udev/60-blinkstick.rules` grants a logged-in desktop user access to a stick without root.
+- `Mode` type with the constants `ModeRGB`, `ModeRGBInverse`, `ModeWS2812` and `ModeWS2812Mirror`, and `Mode.String`.
+- `Device.Mode` reads the device mode, and `Device.SetMode` changes it (writes EEPROM; skipped when unchanged).
+- `Model.SupportsMode` reports which modes a model allows.
+- `ErrUnsupportedMode`, returned by `SetMode` for a mode the model does not support.
+
+### Changed
+
+- `SetLED` sends one report 5 instead of reading and rewriting the whole frame.
+- `Model` gained an unexported field; caller-built models no longer equal predefined ones, support no modes, and `%+v` output includes a `modes` field.
 
 ## [0.3.0] - 2026-09-28
 
@@ -45,7 +52,8 @@ All notable changes to this project are recorded here. The format follows
 - `Blink`, `Pulse` and `Morph` effects, cancellable with a context.
 - Safe to list and open sticks from several goroutines.
 
-[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bawdo/go-blinkstick/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bawdo/go-blinkstick/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/bawdo/go-blinkstick/releases/tag/v0.1.0

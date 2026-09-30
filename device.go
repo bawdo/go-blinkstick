@@ -19,9 +19,10 @@ var (
 	ErrOutOfRange  = errors.New("blinkstick: out of range")
 	ErrClosed      = errors.New("blinkstick: device closed")
 
-	ErrInvalidName   = errors.New("blinkstick: invalid name")
-	ErrDuplicateName = errors.New("blinkstick: name used by more than one stick")
-	ErrDisconnected  = error(&disconnectedError{})
+	ErrUnsupportedMode = errors.New("blinkstick: mode not supported by this model")
+	ErrInvalidName     = errors.New("blinkstick: invalid name")
+	ErrDuplicateName   = errors.New("blinkstick: name used by more than one stick")
+	ErrDisconnected    = error(&disconnectedError{})
 )
 
 // disconnectedError is returned when a stick cannot be reopened. It matches
@@ -280,21 +281,29 @@ func (d *Device) LED(i int) (RGB, error) {
 	return leds[i], nil
 }
 
-// SetLED sets LED i to c and leaves the others as they are. It reads the
-// frame back and rewrites it, because setting a single LED directly (report
-// 5) needs a firmware mode that is unverified on v3 hardware.
+// SetLED sets LED i to c and leaves the others as they are. It sends one
+// report (report 5), which takes about a millisecond. The first call on a
+// Device that has written nothing also reads the frame back once, so a
+// reconnect can repaint the other LEDs.
 func (d *Device) SetLED(i int, c RGB) error {
 	if err := d.checkIndex(i); err != nil {
 		return err
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	leds, err := d.readFrameLocked()
-	if err != nil {
+	if d.last == nil {
+		leds, err := d.readFrameLocked()
+		if err != nil {
+			return err
+		}
+		d.last = leds
+	}
+	scaled := c.scale(d.limit)
+	if err := d.sendLocked(encodeLED(i, d.flipLocked([]RGB{scaled})[0])); err != nil {
 		return err
 	}
-	leds[i] = c.scale(d.limit)
-	return d.writeFrameLocked(leds)
+	d.last[i] = scaled
+	return nil
 }
 
 // readFrameLocked reads report 6. d.mu must be held.

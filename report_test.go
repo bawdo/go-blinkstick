@@ -39,3 +39,14 @@ func TestReportSizes(t *testing.T) {
 		t.Errorf("USB ID %04x:%04x", vendorID, productID)
 	}
 }
+
+func TestEncodeLEDLayout(t *testing.T) {
+	got := encodeLED(3, RGB{R: 0x11, G: 0x22, B: 0x33})
+	want := []byte{0x05, 0x00, 0x03, 0x11, 0x22, 0x33} // RGB on the wire, channel 0
+	if len(got) != ledReportSize || ledReportSize != 6 {
+		t.Fatalf("len = %d, want 6", len(got))
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("encodeLED = % x, want % x", got, want)
+	}
+}

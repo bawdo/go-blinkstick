@@ -24,13 +24,15 @@ type fakeTransport struct {
 	mu      sync.Mutex
 	reports map[byte][]byte
 	sends   [][]byte
+	gets    int  // GetFeatureReport calls, failed ones included
 	fail    int  // fail this many transfers before succeeding
 	gone    bool // unplugged: every transfer fails
 	closed  bool
 }
 
 func newFakeTransport() *fakeTransport {
-	return &fakeTransport{reports: map[byte][]byte{}}
+	// A real stick reads mode 2 (WS2812), which every LED feature needs.
+	return &fakeTransport{reports: map[byte][]byte{reportMode: {reportMode, byte(ModeWS2812)}}}
 }
 
 func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
@@ -45,12 +47,33 @@ func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
 		return 0, errBusy
 	}
 	f.reports[p[0]] = bytes.Clone(p)
+	if p[0] == reportLED {
+		f.applyLEDLocked(p)
+	}
 	return len(p), nil
+}
+
+// applyLEDLocked stores a report 5 in the frame as the firmware does: RGB on
+// the wire becomes GRB in the slot. The channel byte is ignored and slots of
+// 8 or more are dropped. f.mu must be held.
+func (f *fakeTransport) applyLEDLocked(p []byte) {
+	slot := int(p[2])
+	if slot >= frameLEDs {
+		return
+	}
+	buf := f.reports[reportFrame]
+	if buf == nil {
+		buf = make([]byte, frameReportSize)
+		buf[0] = reportFrame
+		f.reports[reportFrame] = buf
+	}
+	buf[2+slot*3], buf[3+slot*3], buf[4+slot*3] = p[4], p[3], p[5]
 }
 
 func (f *fakeTransport) GetFeatureReport(p []byte) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
 	if f.gone {
 		return 0, errGone
 	}
@@ -102,6 +125,12 @@ func (f *fakeTransport) sendCount() int {
 	return len(f.sends)
 }
 
+func (f *fakeTransport) getCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.gets
+}
+
 func openFake(m Model) (*Device, *fakeTransport) {
 	ft := newFakeTransport()
 	return newDevice(ft, Info{Serial: "BS000001-3.0", Version: "3.0", Model: m}), ft
@@ -129,14 +158,15 @@ func (b *fakeBackend) unplug(i int) {
 }
 
 // replug brings device i back as a fresh transport with its LEDs off, as a
-// real stick is after losing power. Info blocks survive, as EEPROM does.
+// real stick is after losing power. Info blocks and the mode survive, as
+// EEPROM does.
 func (b *fakeBackend) replug(i int) *fakeTransport {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	old := b.devices[i].t
 	nt := newFakeTransport()
 	old.mu.Lock()
-	for _, id := range []byte{reportInfo1, reportInfo2} {
+	for _, id := range []byte{reportInfo1, reportInfo2, reportMode} {
 		if r := old.reports[id]; r != nil {
 			nt.reports[id] = bytes.Clone(r)
 		}
@@ -196,4 +226,14 @@ func threeSticks() (*fakeBackend, map[string]*fakeTransport) {
 		{info: nanoInfo, t: ts["nano"]}, {info: squareInfo, t: ts["square"]},
 		{info: flexInfo, t: ts["flex"]},
 	}}, ts
+}
+
+// lastSend returns the most recent send attempt, or nil if there was none.
+func (f *fakeTransport) lastSend() []byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.sends) == 0 {
+		return nil
+	}
+	return f.sends[len(f.sends)-1]
 }

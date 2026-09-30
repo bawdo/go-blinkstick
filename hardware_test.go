@@ -3,7 +3,7 @@
 // Hardware tests need a BlinkStick Nano and a Square attached, and someone
 // watching the LEDs. Run them with: make test-hardware
 //
-// EEPROM RULE: these tests must never call SetInfoBlock, SetName or anything
+// EEPROM RULE: these tests must never call SetInfoBlock, SetName, SetMode or anything
 // else that writes EEPROM, because EEPROM wears with use. Reading info blocks
 // and names is fine. LED values live in RAM and cause no wear. Set a name by
 // hand if you want the name tests to do more than read.
@@ -396,4 +396,19 @@ func TestHardwareInverse(t *testing.T) {
 func usbHas(serial string) bool {
 	out, err := exec.Command("ioreg", "-p", "IOUSB", "-l", "-w0").Output()
 	return err == nil && strings.Contains(string(out), `"USB Serial Number" = "`+serial+`"`)
+}
+
+// TestHardwareModeReadOnly reads the mode only. It must never call SetMode:
+// that writes EEPROM (see the EEPROM RULE above).
+func TestHardwareModeReadOnly(t *testing.T) {
+	eachStick(t, func(t *testing.T, d *Device) {
+		m, err := d.Mode()
+		if err != nil {
+			t.Fatalf("Mode: %v", err)
+		}
+		t.Logf("mode = %v", m)
+		if m != ModeWS2812 && m != ModeWS2812Mirror {
+			t.Errorf("Mode = %v, want %v or %v", m, ModeWS2812, ModeWS2812Mirror)
+		}
+	})
 }

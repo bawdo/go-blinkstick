@@ -11,8 +11,12 @@ const (
 const (
 	reportInfo1 = 2
 	reportInfo2 = 3
+	reportMode  = 4
+	reportLED   = 5
 	reportFrame = 6
 
+	modeReportSize  = 2 // ID, mode
+	ledReportSize   = 6 // ID, channel, index, R, G, B
 	frameLEDs       = 8
 	frameReportSize = 2 + frameLEDs*3 // ID, channel, 8 x (G, R, B)
 	infoBlockSize   = 32
@@ -29,6 +33,13 @@ func encodeFrame(leds []RGB) []byte {
 		buf[2+i*3], buf[3+i*3], buf[4+i*3] = c.G, c.R, c.B
 	}
 	return buf
+}
+
+// encodeLED builds report 5, which sets one LED. Unlike the frame, it takes
+// R, G, B in that order. The firmware ignores the channel byte, so it is
+// always 0, and does not range check i, so callers must.
+func encodeLED(i int, c RGB) []byte {
+	return []byte{reportLED, 0, byte(i), c.R, c.G, c.B}
 }
 
 // decodeFrame reads the first n LEDs out of a report 6 buffer.

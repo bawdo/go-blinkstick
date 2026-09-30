@@ -2,17 +2,28 @@ package blinkstick
 
 import "strings"
 
-// Model describes a BlinkStick product. Models differ only in data, so
-// supporting another product means adding a row to the models table.
+// Model describes a BlinkStick product. Models differ only in data,
+// including which modes they allow, so supporting another product means
+// adding a row to the models table.
 type Model struct {
-	Name string // "Nano", "Square" or "unknown"
-	LEDs int    // addressable LEDs on channel 0
+	Name  string // "Nano", "Square" or "unknown"
+	LEDs  int    // addressable LEDs on channel 0
+	modes uint8  // allowed modes, bit 1<<m set for each Mode m
+}
+
+// wsModes allows ModeWS2812 and ModeWS2812Mirror. Modes 0 and 1 are for the
+// BlinkStick Pro's RGB outputs, and a Nano set to mode 1 goes dark.
+const wsModes = 1<<ModeWS2812 | 1<<ModeWS2812Mirror
+
+// SupportsMode reports whether SetMode accepts x on this model.
+func (m Model) SupportsMode(x Mode) bool {
+	return x < 8 && m.modes&(1<<x) != 0
 }
 
 // Supported models.
 var (
-	Nano   = Model{Name: "Nano", LEDs: 2}
-	Square = Model{Name: "Square", LEDs: 8}
+	Nano   = Model{Name: "Nano", LEDs: 2, modes: wsModes}
+	Square = Model{Name: "Square", LEDs: 8, modes: wsModes}
 
 	unknownModel = Model{Name: "unknown"}
 )

@@ -49,3 +49,25 @@ func TestModelLEDs(t *testing.T) {
 		t.Errorf("LEDs: Nano %d, Square %d, unknown %d", Nano.LEDs, Square.LEDs, unknownModel.LEDs)
 	}
 }
+
+func TestModelSupportsMode(t *testing.T) {
+	for _, m := range []Model{Nano, Square} {
+		for _, x := range []Mode{ModeWS2812, ModeWS2812Mirror} {
+			if !m.SupportsMode(x) {
+				t.Errorf("%s.SupportsMode(%v) = false, want true", m.Name, x)
+			}
+		}
+	}
+	for _, m := range []Model{Nano, Square, unknownModel} {
+		for _, x := range []Mode{ModeRGB, ModeRGBInverse, Mode(4), Mode(255)} {
+			if m.SupportsMode(x) {
+				t.Errorf("%s.SupportsMode(%v) = true, want false", m.Name, x)
+			}
+		}
+	}
+	for _, x := range []Mode{ModeWS2812, ModeWS2812Mirror} {
+		if unknownModel.SupportsMode(x) {
+			t.Errorf("unknown.SupportsMode(%v) = true, want false", x)
+		}
+	}
+}
