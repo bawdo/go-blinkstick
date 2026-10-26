@@ -9,9 +9,9 @@ test: ## Run go vet and unit tests with the race detector
 	go vet ./...
 	go test -race ./...
 
-FUZZTIME ?= 30s
+FUZZTIME ?= 15s
 
-fuzz: ## Run each fuzz target for FUZZTIME (default 30s)
+fuzz: ## Run each fuzz target for FUZZTIME (default 15s)
 	@for f in $$(go test -list '^Fuzz' . | grep '^Fuzz'); do \
 		go test -run '^$$' -fuzz "^$$f\$$" -fuzztime $(FUZZTIME) . || exit 1; \
 	done

@@ -1,11 +1,22 @@
 name: CI
 
+# Pushes to branches with an open PR are covered by pull_request, so push
+# only runs on main. The weekly run fuzzes for longer.
 on:
   push:
+    branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 2 * * 1"
 
 permissions:
   contents: read
+
+# A new push to a PR cancels its run in progress. Other events get their own
+# group, so runs on main are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -25,14 +36,16 @@ jobs:
           go-version: ${{ matrix.go }}
       - run: go vet ./...
       - run: go test -race ./...
-      - run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
-      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      # Static analysis does not vary by OS or Go version, so run it once.
+      - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
+        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+      - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
+  # go test -fuzz takes one target at a time, so make fuzz runs them in turn
+  # in one job rather than paying runner setup per target.
   fuzz:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [FuzzParseRGB, FuzzNewInfo, FuzzInfoBlockRoundTrip, FuzzNameRoundTrip]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,7 +54,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
-      - run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 30s .
+      - run: make fuzz FUZZTIME=${{ github.event_name == 'schedule' && '5m' || '15s' }}
 
   # One stable check name for branch protection, so changing the matrix
   # does not change what the ruleset has to require.
