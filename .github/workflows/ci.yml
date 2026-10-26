@@ -28,13 +28,28 @@ jobs:
       - run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [FuzzParseRGB, FuzzNewInfo, FuzzInfoBlockRoundTrip, FuzzNameRoundTrip]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27"
+      - run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 30s .
+
   # One stable check name for branch protection, so changing the matrix
   # does not change what the ruleset has to require.
   ci-result:
     name: CI result
     if: always()
-    needs: test
+    needs: [test, fuzz]
     runs-on: ubuntu-latest
     steps:
-      - if: needs.test.result != 'success'
+      - if: needs.test.result != 'success' || needs.fuzz.result != 'success'
         run: exit 1

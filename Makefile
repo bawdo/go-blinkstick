@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help test build test-hardware test-reconnect
+.PHONY: help test fuzz build test-hardware test-reconnect
 
 help: ## List make targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -8,6 +8,13 @@ help: ## List make targets
 test: ## Run go vet and unit tests with the race detector
 	go vet ./...
 	go test -race ./...
+
+FUZZTIME ?= 30s
+
+fuzz: ## Run each fuzz target for FUZZTIME (default 30s)
+	@for f in $$(go test -list '^Fuzz' . | grep '^Fuzz'); do \
+		go test -run '^$$' -fuzz "^$$f\$$" -fuzztime $(FUZZTIME) . || exit 1; \
+	done
 
 build: ## Compile the package
 	go build ./...
