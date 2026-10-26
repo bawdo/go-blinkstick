@@ -133,7 +133,7 @@ session is needed beyond replugging the device.
 ```sh
 make help           # list targets
 make test           # vet and unit tests, no hardware needed
-make fuzz           # each fuzz target for 30s (FUZZTIME=5m to go longer)
+make fuzz           # each fuzz target for 15s (FUZZTIME=5m to go longer)
 make build          # compile
 make test-hardware  # tests against a real Nano and Square
 make test-reconnect # you unplug and replug the Nano when told
