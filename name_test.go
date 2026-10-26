@@ -202,3 +202,20 @@ func TestListNamed(t *testing.T) {
 		t.Error("ListNamed left sticks open")
 	}
 }
+
+func TestListNamedSkipsUnreadable(t *testing.T) {
+	b, ts := threeSticks()
+	nameStick(ts["square"], "shelf")
+	ts["nano"].gone = true // opens, but every read fails
+	useBackend(t, b)
+	got, err := ListNamed()
+	if err != nil {
+		t.Fatalf("ListNamed: %v", err)
+	}
+	if len(got) != 3 || !got[0].Busy || got[1].Name != "shelf" {
+		t.Errorf("ListNamed = %+v, want the Nano busy and the Square named shelf", got)
+	}
+	if !ts["nano"].closed {
+		t.Error("unreadable stick left open")
+	}
+}

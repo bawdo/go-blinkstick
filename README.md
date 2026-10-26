@@ -94,9 +94,10 @@ d, err := blinkstick.OpenName("desk")
 ```
 
 `ListNamed` is `List` with each stick's name added. Both `ListNamed` and `OpenName` open every
-attached stick to read its name, so a stick another program holds shows up in `ListNamed` with
-`Busy` set, and `OpenName` skips it. Names are matched exactly, and `OpenName` returns
-`ErrDuplicateName` if two sticks share one.
+attached stick to read its name, so a stick another program holds, or one whose name cannot be
+read, shows up in `ListNamed` with `Busy` set, and `OpenName` skips it. Names are matched exactly,
+and `OpenName` returns `ErrDuplicateName` if two sticks share one. Names are bytes stored on the
+stick, possibly by another tool, so sanitise them before printing them to a terminal.
 
 Each open `Device` is independent, and its methods are safe to call from several goroutines.
 macOS lets only one process open a stick at a time; Linux does not, so `Busy` in `ListNamed`
@@ -127,6 +128,14 @@ sudo udevadm trigger
 Then unplug and replug the stick (or reboot). This grants access to whoever is logged in at the
 desktop (via systemd-logind's `uaccess`), not a udev group, so no group membership or new login
 session is needed beyond replugging the device.
+
+The rule only grants the `hidraw` node, which is all this package uses. Before v0.6.0 it also
+granted the raw USB device. If you use a tool that talks to the stick through libusb (such as the
+official Python `blinkstick` package), add this line to the rule as well:
+
+```
+SUBSYSTEM=="usb", ATTR{idVendor}=="20a0", ATTR{idProduct}=="41e5", TAG+="uaccess"
+```
 
 ## Development
 
