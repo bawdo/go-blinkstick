@@ -3,6 +3,7 @@ package blinkstick
 import (
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -269,5 +270,31 @@ func TestSetLEDBrightnessAndInverse(t *testing.T) {
 	}
 	if want := (RGB{128, 128, 128}); got != want {
 		t.Errorf("LED(0) = %v, want %v", got, want)
+	}
+}
+
+func TestRetriesShortRead(t *testing.T) {
+	d, ft := openFake(Square)
+	if err := d.SetAll(White); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
+	ft.short = 2
+	got, err := d.Frame()
+	if err != nil {
+		t.Fatalf("Frame: %v", err)
+	}
+	if !slices.Equal(got, fill(Square.LEDs, White)) {
+		t.Errorf("Frame = %v, want all white", got)
+	}
+	if ft.getCount() != 3 {
+		t.Errorf("gets = %d, want 3", ft.getCount())
+	}
+}
+
+func TestShortReadIsAnError(t *testing.T) {
+	d, ft := openFake(Square)
+	ft.short = 3
+	if _, err := d.Mode(); err == nil || !strings.Contains(err.Error(), "short read") {
+		t.Errorf("Mode = %v, want a short read error", err)
 	}
 }

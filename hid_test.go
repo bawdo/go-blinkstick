@@ -60,3 +60,11 @@ func TestHIDReleaseWithoutAcquire(t *testing.T) {
 		t.Errorf("exits = %d, hidRefs = %d, want 0, 0", *exits, hidRefs)
 	}
 }
+
+func TestOpenErrorKeepsCause(t *testing.T) {
+	cause := errors.New("hidapi: access denied")
+	err := openError("BS072777-3.0", cause)
+	if !errors.Is(err, ErrNotFound) || !errors.Is(err, cause) {
+		t.Errorf("openError = %v, want it to match ErrNotFound and the cause", err)
+	}
+}

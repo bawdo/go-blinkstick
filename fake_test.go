@@ -26,6 +26,7 @@ type fakeTransport struct {
 	sends   [][]byte
 	gets    int  // GetFeatureReport calls, failed ones included
 	fail    int  // fail this many transfers before succeeding
+	short   int  // answer this many gets with only the report ID
 	gone    bool // unplugged: every transfer fails
 	closed  bool
 }
@@ -82,6 +83,10 @@ func (f *fakeTransport) GetFeatureReport(p []byte) (int, error) {
 		return 0, errBusy
 	}
 	clear(p[1:])
+	if f.short > 0 {
+		f.short--
+		return 1, nil
+	}
 	if stored := f.reports[p[0]]; stored != nil {
 		copy(p[1:], stored[1:])
 	}

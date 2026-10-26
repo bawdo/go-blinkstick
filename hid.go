@@ -86,7 +86,7 @@ func (hidBackend) open(serial string) (transport, deviceInfo, error) {
 	if err != nil {
 		enumMu.Unlock()
 		releaseHID()
-		return nil, deviceInfo{}, fmt.Errorf("%w: %q: %v", ErrNotFound, serial, err)
+		return nil, deviceInfo{}, openError(serial, err)
 	}
 	hi, err := dev.GetDeviceInfo()
 	enumMu.Unlock()
@@ -96,6 +96,12 @@ func (hidBackend) open(serial string) (transport, deviceInfo, error) {
 		return nil, deviceInfo{}, fmt.Errorf("blinkstick: device info: %w", err)
 	}
 	return hidTransport{dev}, fromHID(hi), nil
+}
+
+// openError reports a stick that hidapi could not open. It matches
+// ErrNotFound and keeps hidapi's reason for errors.Is and errors.As.
+func openError(serial string, err error) error {
+	return fmt.Errorf("%w: %q: %w", ErrNotFound, serial, err)
 }
 
 func fromHID(hi *hid.DeviceInfo) deviceInfo {

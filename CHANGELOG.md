@@ -4,6 +4,27 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-26
+
+### Changed
+
+- **Linux udev rule:** `udev/60-blinkstick.rules` now grants only the `hidraw` node, not the raw
+  USB device. This package needs nothing more, so it keeps working. Tools that use libusb directly,
+  such as the official Python `blinkstick` package, lose access until you add the line given under
+  "Linux" in the README. An installed copy of the old rule is not changed until you replace it.
+- `ListNamed` lists a stick whose name cannot be read with `Busy` set, instead of failing the whole
+  listing.
+- When `OpenName` finds no match, its error now says why each skipped stick was skipped, including
+  sticks that could not be opened. It still matches `ErrNotFound`.
+- Errors from opening a stick now wrap hidapi's reason as well as `ErrNotFound`, so `errors.Is`
+  and `errors.As` can reach it.
+
+### Fixed
+
+- A feature report read that returns fewer bytes than asked for is now retried and then reported
+  as an error. Before, the missing bytes read as zero, so `Frame`, `LED`, `Mode`, `InfoBlock` and
+  `Name` could quietly return wrong values.
+
 ## [0.5.0] - 2026-09-30
 
 ### Added
@@ -60,6 +81,7 @@ All notable changes to this project are recorded here. The format follows
 - Safe to list and open sticks from several goroutines.
 
 [Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.5.0...HEAD
+[0.6.0]: https://github.com/bawdo/go-blinkstick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bawdo/go-blinkstick/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bawdo/go-blinkstick/compare/v0.2.0...v0.3.0

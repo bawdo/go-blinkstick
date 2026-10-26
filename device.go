@@ -173,15 +173,28 @@ func (d *Device) flipLocked(leds []RGB) []RGB {
 }
 
 func (d *Device) sendLocked(p []byte) error {
-	return d.transferLocked("send", p[0], func(t transport) (int, error) {
-		return t.SendFeatureReport(p)
-	})
+	return d.transferLocked("send", p[0], send(p))
 }
 
 func (d *Device) getLocked(p []byte) error {
-	return d.transferLocked("get", p[0], func(t transport) (int, error) {
-		return t.GetFeatureReport(p)
-	})
+	return d.transferLocked("get", p[0], get(p))
+}
+
+// send returns a transfer that sends report p.
+func send(p []byte) func(transport) (int, error) {
+	return func(t transport) (int, error) { return t.SendFeatureReport(p) }
+}
+
+// get returns a transfer that reads report p. A short read fails, so it is
+// retried rather than leaving the rest of p zero.
+func get(p []byte) func(transport) (int, error) {
+	return func(t transport) (int, error) {
+		n, err := t.GetFeatureReport(p)
+		if err == nil && n < len(p) {
+			err = fmt.Errorf("short read: %d of %d bytes", n, len(p))
+		}
+		return n, err
+	}
 }
 
 // transferLocked runs f up to transferAttempts times. If they all fail and
@@ -237,7 +250,7 @@ func (d *Device) reconnectLocked(repaint bool) error {
 		return nil
 	}
 	p := encodeFrame(d.flipLocked(d.last))
-	if err := d.tryLocked(func(t transport) (int, error) { return t.SendFeatureReport(p) }); err != nil {
+	if err := d.tryLocked(send(p)); err != nil {
 		d.t.Close()
 		d.t = nil
 		return &disconnectedError{serial: d.info.Serial,
@@ -253,11 +266,7 @@ func transferError(op string, id byte, err error) error {
 
 // fill returns n copies of c.
 func fill(n int, c RGB) []RGB {
-	leds := make([]RGB, n)
-	for i := range leds {
-		leds[i] = c
-	}
-	return leds
+	return slices.Repeat([]RGB{c}, n)
 }
 
 // Frame reads every LED back from the device. Values are those stored on the
