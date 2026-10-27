@@ -35,7 +35,14 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - run: go vet ./...
-      - run: go test -race ./...
+      - run: go test -race -coverprofile=coverage.out ./...
+      # Coverage is uploaded once, from the cell that also runs static analysis.
+      - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
       # Static analysis does not vary by OS or Go version, so run it once.
       - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
         run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
