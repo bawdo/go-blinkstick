@@ -6,6 +6,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-29
+
 ### Added
 
 - A release workflow for `v*` tags. It runs the CI checks on the tagged commit, makes sure
@@ -99,7 +101,8 @@ All notable changes to this project are recorded here. The format follows
 - `Blink`, `Pulse` and `Morph` effects, cancellable with a context.
 - Safe to list and open sticks from several goroutines.
 
-[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/bawdo/go-blinkstick/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/bawdo/go-blinkstick/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/bawdo/go-blinkstick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bawdo/go-blinkstick/compare/v0.4.0...v0.5.0
