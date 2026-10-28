@@ -27,7 +27,7 @@ Features built into the BlinkStick firmware.
 | Info blocks 1 and 2 | yes | yes | v0.1.0 | `InfoBlock`, `SetInfoBlock`. 32 bytes each, stored in EEPROM |
 | Set one LED directly (report 5) | yes | yes | v0.5.0 | `SetLED`. `[5, channel, index, R, G, B]`, RGB order (the frame is GRB). Works in modes 2 and 3. The channel byte is ignored and the index is not range checked |
 | Read device mode (report 4) | yes | yes | v0.5.0 | `Mode`. `[4, mode]`. Both read mode 2 |
-| Set device mode (report 4) | yes | yes | v0.5.0 | `SetMode`. Stored in EEPROM, blocks about 50 ms, skipped when the mode is unchanged, takes effect without a replug. 2 to 3 to 2 verified on both |
+| Set device mode (report 4) | yes | yes | v0.5.0 | `SetMode`. Stored in EEPROM, skipped when the mode is unchanged. The stick refuses transfers for about 12 to 15 ms after the write, so `SetMode` waits (at most 250 ms) until it reads the new mode back. Takes effect without a replug. 2 to 3 to 2 verified on both |
 | Mode 2, WS2812 | yes | yes | n/a | The mode both are in, and the one every LED feature here needs. Probably the factory default |
 | Mode 3, WS2812 mirror | yes | yes | v0.5.0 | Changes only report 1, whose colour goes to every LED. Reports 5 and 6 behave as in mode 2 |
 | Modes 0 and 1, normal and inverse | n/a | n/a | n/a | For the BlinkStick Pro's RGB outputs. Upstream reports a Nano in mode 1 going dark until replugged. `SetMode` refuses them with `ErrUnsupportedMode` |

@@ -2,9 +2,11 @@ package blinkstick
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestModeString(t *testing.T) {
@@ -121,5 +123,61 @@ func TestLEDMethodsInMirrorMode(t *testing.T) {
 	got, err := d.Frame()
 	if err != nil || !slices.Equal(got, want) {
 		t.Errorf("Frame() = %v, %v, want %v", got, err, want)
+	}
+}
+
+// A real stick refuses every transfer for about 12 to 15 ms after a report 4
+// write. SetMode waits it out, so the next call works first time.
+func TestSetModeWaitsForStick(t *testing.T) {
+	tests := map[string]func(d *Device) error{
+		"Mode": func(d *Device) error {
+			m, err := d.Mode()
+			if err == nil && m != ModeWS2812Mirror {
+				err = fmt.Errorf("mode = %v, want %v", m, ModeWS2812Mirror)
+			}
+			return err
+		},
+		"SetInfoBlock": func(d *Device) error { return d.SetInfoBlock(2, []byte("data")) },
+		"SetName":      func(d *Device) error { return d.SetName("desk") },
+		"SetAll":       func(d *Device) error { return d.SetAll(RGB{G: 255}) },
+	}
+	for name, next := range tests {
+		t.Run(name, func(t *testing.T) {
+			d, _, ft := openNano(t)
+			ft.busyFor = 15 * time.Millisecond
+			slept := stubClock(t, ft)
+			if err := d.SetMode(ModeWS2812Mirror); err != nil {
+				t.Fatalf("SetMode: %v", err)
+			}
+			if err := next(d); err != nil {
+				t.Fatalf("%s straight after SetMode: %v", name, err)
+			}
+			if ft.closed {
+				t.Error("transport closed: SetMode should wait, not reconnect")
+			}
+			if want := slices.Repeat([]time.Duration{modePoll}, 3); !slices.Equal(*slept, want) {
+				t.Errorf("slept %v, want %v", *slept, want)
+			}
+		})
+	}
+}
+
+func TestSetModeGivesUpWhenStickNeverAnswers(t *testing.T) {
+	d, _, ft := openNano(t)
+	ft.busyFor = time.Hour
+	slept := stubClock(t, ft)
+	err := d.SetMode(ModeWS2812Mirror)
+	if !errors.Is(err, ErrDisconnected) {
+		t.Fatalf("SetMode = %v, want ErrDisconnected", err)
+	}
+	if !strings.Contains(err.Error(), nanoInfo.serial) {
+		t.Errorf("error %q should name %s", err, nanoInfo.serial)
+	}
+	var total time.Duration
+	for _, s := range *slept {
+		total += s
+	}
+	if total != modeSettle {
+		t.Errorf("waited %v, want %v", total, modeSettle)
 	}
 }

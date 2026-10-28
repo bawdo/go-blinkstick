@@ -7,10 +7,12 @@ package blinkstick
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 )
 
 var (
@@ -29,6 +31,13 @@ type fakeTransport struct {
 	short   int  // answer this many gets with only the report ID
 	gone    bool // unplugged: every transfer fails
 	closed  bool
+
+	// A real stick refuses every transfer for a while after a report 4
+	// write. busyFor is how long, in fake time; now is the fake clock,
+	// moved on only by stubClock's sleep.
+	busyFor   time.Duration
+	busyUntil time.Duration
+	now       time.Duration
 }
 
 func newFakeTransport() *fakeTransport {
@@ -43,11 +52,17 @@ func (f *fakeTransport) SendFeatureReport(p []byte) (int, error) {
 	if f.gone {
 		return 0, errGone
 	}
+	if f.now < f.busyUntil {
+		return 0, errBusy
+	}
 	if f.fail > 0 {
 		f.fail--
 		return 0, errBusy
 	}
 	f.reports[p[0]] = bytes.Clone(p)
+	if p[0] == reportMode {
+		f.busyUntil = f.now + f.busyFor
+	}
 	if p[0] == reportLED {
 		f.applyLEDLocked(p)
 	}
@@ -78,6 +93,9 @@ func (f *fakeTransport) GetFeatureReport(p []byte) (int, error) {
 	if f.gone {
 		return 0, errGone
 	}
+	if f.now < f.busyUntil {
+		return 0, errBusy
+	}
 	if f.fail > 0 {
 		f.fail--
 		return 0, errBusy
@@ -98,6 +116,31 @@ func (f *fakeTransport) Close() error {
 	defer f.mu.Unlock()
 	f.closed = true
 	return nil
+}
+
+// advance moves the fake clock on by d.
+func (f *fakeTransport) advance(d time.Duration) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.now += d
+}
+
+// stubClock makes sleep move ft's fake clock on instead of waiting, and
+// records each sleep. Transfers take no fake time, so retries without a
+// sleep between them never outlast a busy window.
+func stubClock(t *testing.T, ft *fakeTransport) *[]time.Duration {
+	orig := sleep
+	var slept []time.Duration
+	sleep = func(ctx context.Context, d time.Duration) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		ft.advance(d)
+		slept = append(slept, d)
+		return nil
+	}
+	t.Cleanup(func() { sleep = orig })
+	return &slept
 }
 
 // frame decodes the last report 6 the fake accepted.

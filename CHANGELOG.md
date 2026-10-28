@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `SetMode` now waits until the stick answers again before it returns. A stick refuses every
+  transfer for about 12 to 15 ms after a mode write, and the retries are too quick to outlast that,
+  so the next call (reading the mode back, writing an info block, a name or LEDs) failed as if the
+  stick had been unplugged. `SetMode` reads report 4 every 5 ms until it shows the new mode, and
+  returns `ErrDisconnected` naming the stick if it has not answered after 250 ms. The old doc
+  comment said the write blocks for about 50 ms; it never waited at all.
+
 ## [0.6.0] - 2026-10-26
 
 ### Changed
@@ -80,7 +91,7 @@ All notable changes to this project are recorded here. The format follows
 - `Blink`, `Pulse` and `Morph` effects, cancellable with a context.
 - Safe to list and open sticks from several goroutines.
 
-[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bawdo/go-blinkstick/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/bawdo/go-blinkstick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bawdo/go-blinkstick/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bawdo/go-blinkstick/compare/v0.3.0...v0.4.0

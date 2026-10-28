@@ -155,6 +155,11 @@ an in-memory fake. Hardware tests may read names and info blocks, and write LEDs
 but never call `SetInfoBlock`, `SetName`, `SetMode` or anything else that writes EEPROM. To cover
 `OpenName` on hardware, set a name by hand once.
 
+When checking EEPROM by hand, note that a stick refuses every transfer for about 12 to 15 ms after
+a mode write (report 4). `SetMode` waits that out (at most 250 ms) before it returns. A script that
+sends report 4 some other way must pause before its next transfer, or that transfer fails as if the
+stick had been unplugged.
+
 ## Versioning
 
 Releases follow [semantic versioning](https://semver.org/) and are tagged `vX.Y.Z`. Until
