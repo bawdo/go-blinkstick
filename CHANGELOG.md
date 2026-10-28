@@ -6,6 +6,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A release workflow for `v*` tags. It runs the CI checks on the tagged commit, makes sure
+  proxy.golang.org has the version at that commit and sum.golang.org has recorded it, then creates
+  the GitHub release with the version's CHANGELOG section as the notes (`scripts/release-notes.sh`).
+
 ## [0.6.1] - 2026-10-29
 
 ### Fixed
