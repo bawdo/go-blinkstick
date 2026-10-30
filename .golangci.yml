@@ -1,0 +1,37 @@
+version: "2"
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - gosec
+  exclusions:
+    rules:
+      # Test fixtures and fakes are not a security surface.
+      - path: _test\.go
+        linters:
+          - gosec
+      # Examples are documentation, and defer d.Close() is the idiom readers
+      # expect to see there.
+      - path: example_test\.go
+        linters:
+          - errcheck
+        text: "`d.Close`"
+      # G115 (integer overflow conversion) fires on every narrowing to a
+      # byte. Packing colours and report fields into bytes is what this
+      # package does, and the truncation is the point.
+      - linters:
+          - gosec
+        text: "G115"
+      # G404 (weak random number generator): random colours need no
+      # cryptographic randomness.
+      - path: random\.go
+        linters:
+          - gosec
+        text: "G404"
+      # QF1001 (apply De Morgan's law) is a stylistic quickfix, not a
+      # correctness check, and the negated form reads closer to the intent.
+      - linters:
+          - staticcheck
+        text: "QF1001"

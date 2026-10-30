@@ -61,7 +61,7 @@ func ListNamed() ([]NamedInfo, error) {
 			named[i].Busy = true
 			continue
 		}
-		d.Close()
+		_ = d.Close()
 		named[i].Name = name
 	}
 	return named, nil
@@ -89,7 +89,7 @@ func OpenName(name string) (*Device, error) {
 			continue
 		}
 		if got != name {
-			d.Close()
+			_ = d.Close()
 			continue
 		}
 		matches = append(matches, d)
@@ -100,7 +100,7 @@ func OpenName(name string) (*Device, error) {
 	case 1:
 		d := matches[0]
 		if d.info.Model == unknownModel {
-			d.Close()
+			_ = d.Close()
 			return nil, fmt.Errorf("%w: %s is named %q", ErrUnsupported, d.info.Serial, name)
 		}
 		return d, nil
@@ -108,7 +108,7 @@ func OpenName(name string) (*Device, error) {
 	serials := make([]string, len(matches))
 	for i, d := range matches {
 		serials[i] = d.info.Serial
-		d.Close()
+		_ = d.Close()
 	}
 	return nil, fmt.Errorf("%w: %q is on %s", ErrDuplicateName, name, strings.Join(serials, ", "))
 }
@@ -122,7 +122,7 @@ func openNamed(serial string) (*Device, string, error) {
 	}
 	name, err := d.Name()
 	if err != nil {
-		d.Close()
+		_ = d.Close()
 		return nil, "", fmt.Errorf("reading name of %s: %w", serial, err)
 	}
 	return d, name, nil

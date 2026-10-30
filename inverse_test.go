@@ -22,7 +22,9 @@ func TestRGBInverse(t *testing.T) {
 
 func TestInverseOffByDefault(t *testing.T) {
 	d, ft := openFake(Nano)
-	d.SetAll(RGB{R: 255})
+	if err := d.SetAll(RGB{R: 255}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if got := ft.frame(2); !slices.Equal(got, fill(2, RGB{R: 255})) {
 		t.Errorf("device frame = %v, want red", got)
 	}
@@ -44,7 +46,9 @@ func TestInverseReadsBackWhatWasWritten(t *testing.T) {
 	d, _ := openFake(Nano)
 	d.SetInverse(true)
 	leds := []RGB{{R: 10}, {G: 20}}
-	d.SetFrame(leds)
+	if err := d.SetFrame(leds); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	got, err := d.Frame()
 	if err != nil {
 		t.Fatalf("Frame: %v", err)
@@ -61,7 +65,9 @@ func TestInverseAppliesAfterBrightnessLimit(t *testing.T) {
 	d, ft := openFake(Nano)
 	d.SetBrightnessLimit(128)
 	d.SetInverse(true)
-	d.SetAll(White)
+	if err := d.SetAll(White); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if got := ft.frame(2); !slices.Equal(got, fill(2, RGB{127, 127, 127})) {
 		t.Errorf("device frame = %v, want all 127 (255 - 128)", got)
 	}
@@ -70,7 +76,9 @@ func TestInverseAppliesAfterBrightnessLimit(t *testing.T) {
 func TestInverseSetLEDKeepsOthers(t *testing.T) {
 	d, ft := openFake(Square)
 	d.SetInverse(true)
-	d.SetAll(RGB{B: 50})
+	if err := d.SetAll(RGB{B: 50}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if err := d.SetLED(3, RGB{R: 255}); err != nil {
 		t.Fatalf("SetLED: %v", err)
 	}
@@ -85,7 +93,9 @@ func TestInverseMorph(t *testing.T) {
 	stubSleep(t)
 	d, ft := openFake(Nano)
 	d.SetInverse(true)
-	d.Off()
+	if err := d.Off(); err != nil {
+		t.Fatalf("Off: %v", err)
+	}
 	to := RGB{R: 100, G: 200}
 	if err := d.Morph(context.Background(), to, 100*time.Millisecond); err != nil {
 		t.Fatalf("Morph: %v", err)

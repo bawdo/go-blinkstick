@@ -35,7 +35,9 @@ func TestSetAllNanoLeavesUnusedSlotsZero(t *testing.T) {
 
 func TestOff(t *testing.T) {
 	d, ft := openFake(Square)
-	d.SetAll(White)
+	if err := d.SetAll(White); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if err := d.Off(); err != nil {
 		t.Fatalf("Off: %v", err)
 	}
@@ -127,7 +129,9 @@ func TestInfo(t *testing.T) {
 func TestFrameReadsBack(t *testing.T) {
 	d, _ := openFake(Nano)
 	leds := []RGB{{R: 10}, {G: 20}}
-	d.SetFrame(leds)
+	if err := d.SetFrame(leds); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	got, err := d.Frame()
 	if err != nil {
 		t.Fatalf("Frame: %v", err)
@@ -139,7 +143,9 @@ func TestFrameReadsBack(t *testing.T) {
 
 func TestLED(t *testing.T) {
 	d, _ := openFake(Nano)
-	d.SetFrame([]RGB{{R: 10}, {G: 20}})
+	if err := d.SetFrame([]RGB{{R: 10}, {G: 20}}); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	got, err := d.LED(1)
 	if err != nil {
 		t.Fatalf("LED: %v", err)
@@ -151,7 +157,9 @@ func TestLED(t *testing.T) {
 
 func TestSetLEDKeepsOthers(t *testing.T) {
 	d, ft := openFake(Square)
-	d.SetAll(RGB{B: 50})
+	if err := d.SetAll(RGB{B: 50}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if err := d.SetLED(3, RGB{R: 255}); err != nil {
 		t.Fatalf("SetLED: %v", err)
 	}
@@ -165,7 +173,9 @@ func TestSetLEDKeepsOthers(t *testing.T) {
 func TestSetLEDDoesNotRescaleOthers(t *testing.T) {
 	d, ft := openFake(Square)
 	d.SetBrightnessLimit(128)
-	d.SetAll(White)
+	if err := d.SetAll(White); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if err := d.SetLED(0, White); err != nil {
 		t.Fatalf("SetLED: %v", err)
 	}
@@ -209,7 +219,9 @@ func TestSetLEDConcurrent(t *testing.T) {
 
 func TestSetLEDSendsOneReport5(t *testing.T) {
 	d, ft := openFake(Square)
-	d.SetAll(RGB{B: 50})
+	if err := d.SetAll(RGB{B: 50}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	sends, gets := ft.sendCount(), ft.getCount()
 	if err := d.SetLED(3, RGB{R: 255}); err != nil {
 		t.Fatalf("SetLED: %v", err)
@@ -232,7 +244,9 @@ func TestSetLEDSendsOneReport5(t *testing.T) {
 
 func TestSetLEDSeedsLastFrameOnce(t *testing.T) {
 	d, ft := openFake(Nano)
-	ft.SendFeatureReport(encodeFrame([]RGB{{G: 9}, {B: 9}}))
+	if _, err := ft.SendFeatureReport(encodeFrame([]RGB{{G: 9}, {B: 9}})); err != nil {
+		t.Fatalf("SendFeatureReport: %v", err)
+	}
 	if err := d.SetLED(0, RGB{R: 1}); err != nil {
 		t.Fatalf("SetLED: %v", err)
 	}
@@ -255,7 +269,9 @@ func TestSetLEDSeedsLastFrameOnce(t *testing.T) {
 
 func TestSetLEDBrightnessAndInverse(t *testing.T) {
 	d, ft := openFake(Nano)
-	d.SetAll(Off)
+	if err := d.SetAll(Off); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	d.SetBrightnessLimit(128)
 	d.SetInverse(true)
 	if err := d.SetLED(0, White); err != nil {

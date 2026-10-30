@@ -3,8 +3,9 @@ name: Release
 # Go has no registry to upload to: a pushed tag is the release, and the
 # module proxy serves it to anyone who asks. This workflow checks the tagged
 # commit, makes sure the proxy and checksum database have the version, and
-# creates the GitHub release. It cannot stop a bad tag going out, because the
-# proxy may already have it, so tag only after CI passes on main.
+# creates the GitHub release with the module zip and SLSA provenance for it
+# attached. It cannot stop a bad tag going out, because the proxy may already
+# have it, so tag only after CI passes on main.
 on:
   push:
     tags:
@@ -24,9 +25,27 @@ jobs:
     outputs:
       module: ${{ steps.version.outputs.module }}
     steps:
+      # Full history, so the next step can tell whether the tag is on main.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
+      # A tag on a commit that never reached main (a side branch, a local
+      # commit pushed only as a tag) skipped the review and CI main gets. The
+      # proxy may already serve it and nothing here can stop that, but it
+      # gets no GitHub release or provenance saying it came from this repo's
+      # main, and the failed run shows the tag needs retracting.
+      - name: Check the tagged commit is on main
+        run: |
+          if ! git rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
+            echo "::error::the checkout has no origin/main to check the tag against"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main"
+            exit 1
+          fi
+          echo "$GITHUB_REF_NAME points at $GITHUB_SHA, which is on main"
       # The proxy only serves tags that are valid semantic versions, and from
       # v2 on the module path must end in the major version.
       - name: Check the tag is a valid version for go.mod
@@ -72,10 +91,21 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
+          check-latest: true
       # CI checks, the same as the ubuntu/Go 1.27 cell in ci.yml.
       - run: go vet ./...
       - run: go test -race ./...
-      - run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+      - name: Check formatting (gofmt -s)
+        run: |
+          unformatted="$(gofmt -s -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files need gofmt -s -w:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   # Asks the module proxy for the version, which makes it fetch the tag now
@@ -125,31 +155,135 @@ jobs:
           curl -fsS "https://sum.golang.org/lookup/$MODULE@$GITHUB_REF_NAME" \
             | grep -F " $GITHUB_REF_NAME h1:"
 
-  # Creates the GitHub release once the proxy has the version, with the notes
-  # the build job extracted. There is no checkout and nothing is installed, so
-  # this job's write token reaches only the gh CLI that ships on the runner.
-  github-release:
-    needs: proxy
+  # Fetches the module zip, the exact file go get downloads for this version,
+  # so the release can carry it and the provenance can name its hash. go mod
+  # download checks the zip against sum.golang.org itself, so a zip the
+  # checksum database disagrees with stops here.
+  module-zip:
+    needs: [build, proxy]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      name: ${{ steps.zip.outputs.name }}
+      subjects: ${{ steps.zip.outputs.subjects }}
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      # There is no checkout, so there is no go.sum to key a cache on.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          name: release-notes
-      - name: Create the GitHub release
+          go-version: "1.27"
+          cache: false
+      - name: Download the module zip
+        id: zip
+        env:
+          MODULE: ${{ needs.build.outputs.module }}
+        run: |
+          name="${MODULE##*/}-$GITHUB_REF_NAME.zip"
+          zip="$(go mod download -json "$MODULE@$GITHUB_REF_NAME" | jq -r '.Zip // empty')"
+          if [ -z "$zip" ]; then
+            echo "::error::go mod download could not fetch $MODULE@$GITHUB_REF_NAME"
+            exit 1
+          fi
+          cp "$zip" "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "subjects=$(sha256sum "$name" | base64 -w0)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: module-zip
+          path: ${{ steps.zip.outputs.name }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # Attests the module zip's build provenance and creates the GitHub release
+  # with the notes, the zip and the provenance attached. There is no checkout
+  # and nothing is installed, so this job's write token reaches only the gh
+  # CLI that ships on the runner and GitHub's own attest action.
+  publish:
+    needs: [build, module-zip]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      # A published release for the tag, such as one made by hand or by an
+      # earlier run, is left alone. Releases here are immutable, so it could
+      # not take new assets anyway.
+      - name: Check for a published release
+        id: existing
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        # A published release for the tag, such as one made by hand, is left
-        # alone, so a re-run never overwrites it. gh does not see drafts, so
-        # a draft for the tag would get a second release beside it.
         run: |
-          tag="$GITHUB_REF_NAME"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "::notice::release $tag already exists, leaving it as it is"
-            exit 0
+          # This endpoint never returns drafts, and on a 404 gh still prints
+          # the error body, so only a successful lookup counts.
+          if ! published="$(gh api "repos/$GH_REPO/releases/tags/$GITHUB_REF_NAME" --jq '.draft == false' 2>/dev/null)"; then
+            published=false
           fi
-          gh release create "$tag" --verify-tag --title "$tag" \
-            --notes-file release-notes.md
+          if [ "$published" = true ]; then
+            echo "::notice::release $GITHUB_REF_NAME is already published, leaving it as it is"
+          fi
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+      - if: steps.existing.outputs.published != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+      - if: steps.existing.outputs.published != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: module-zip
+      - if: steps.existing.outputs.published != 'true'
+        name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ needs.module-zip.outputs.name }}
+      - if: steps.existing.outputs.published != 'true'
+        name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MODULE: ${{ needs.build.outputs.module }}
+          ZIP: ${{ needs.module-zip.outputs.name }}
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          # The attestation as a Sigstore bundle wrapping the in-toto SLSA
+          # provenance statement, compacted onto one line so it is a valid
+          # JSON lines file. .jsonl is what gh attestation download writes and
+          # gh attestation verify --bundle reads, and .intoto.jsonl is the
+          # SLSA name for provenance, which Scorecard scores as such.
+          bundle="${ZIP%.zip}.intoto.jsonl"
+          jq -c . "$BUNDLE_PATH" > "$bundle"
+          test "$(wc -l < "$bundle")" -eq 1
+          zip_path="\$(go env GOMODCACHE)/cache/download/$MODULE/@v/$tag.zip"
+          {
+            cat release-notes.md
+            echo
+            echo "The module zip attached here is the one \`go get\` downloads. To check the copy"
+            echo "you downloaded is the one this repository's release workflow attested for this tag:"
+            echo
+            echo '```sh'
+            echo "go mod download $MODULE@$tag"
+            echo "gh attestation verify \"$zip_path\" --repo $GH_REPO \\"
+            echo "  --signer-workflow $GH_REPO/.github/workflows/release.yml \\"
+            echo "  --source-ref refs/tags/$tag --deny-self-hosted-runners"
+            echo '```'
+          } > notes.md
+          # A draft left by an earlier failed run has no attested assets, so
+          # it is replaced. gh release view does not find drafts by tag, so
+          # look them up in the list.
+          for id in $(gh api "repos/$GH_REPO/releases" --paginate \
+              --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id"); do
+            echo "deleting stale draft release $id for $tag"
+            gh api -X DELETE "repos/$GH_REPO/releases/$id"
+          done
+          # Created as a draft, assets uploaded, then published, so the
+          # release is never immutable without its assets.
+          gh release create "$tag" --draft --verify-tag --title "$tag" \
+            --notes-file notes.md "$ZIP" "$bundle"
+          gh release edit "$tag" --draft=false --latest
+          gh release view "$tag" --json url --jq .url

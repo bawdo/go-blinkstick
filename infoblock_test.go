@@ -30,7 +30,9 @@ func TestInfoBlockRoundTrip(t *testing.T) {
 
 func TestSetInfoBlockReport(t *testing.T) {
 	d, ft := openFake(Nano)
-	d.SetInfoBlock(2, []byte("hi"))
+	if err := d.SetInfoBlock(2, []byte("hi")); err != nil {
+		t.Fatalf("SetInfoBlock: %v", err)
+	}
 	sent := ft.sends[0]
 	want := make([]byte, 33)
 	want[0], want[1], want[2] = 3, 'h', 'i'

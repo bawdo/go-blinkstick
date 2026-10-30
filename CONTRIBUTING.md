@@ -14,16 +14,19 @@ Thanks for helping out. Bug reports, fixes and new device support are all welcom
 2. Make your change, with tests.
 3. Run `make test`. It runs `go vet` and the unit tests with the race detector, and needs no
    hardware.
-4. CI also runs `staticcheck` and `govulncheck`, on macOS and Linux. To run them yourself:
+4. Run `make lint`. It checks `gofmt -s` and runs
+   [golangci-lint](https://golangci-lint.run/) v2 with the linters in `.golangci.yml`
+   (`errcheck`, `gosec`, `staticcheck` and others). An error you mean to ignore is written
+   `_ = f()`, so the intent is visible.
+5. CI also runs `govulncheck`. To run it yourself:
 
    ```sh
-   go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
    go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
    ```
 
-5. For anything users will notice, add a line under an `Unreleased` heading at the top of
+6. For anything users will notice, add a line under an `Unreleased` heading at the top of
    [CHANGELOG.md](CHANGELOG.md), creating the heading if it is not there.
-6. Open a pull request.
+7. Open a pull request.
 
 ## Hardware tests
 

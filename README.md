@@ -166,9 +166,11 @@ Releases follow [semantic versioning](https://semver.org/) and are tagged `vX.Y.
 `v1.0.0` the API may change between minor releases. See [CHANGELOG.md](CHANGELOG.md).
 
 To release, give the version a dated section in CHANGELOG.md, merge it, and push a signed tag on
-main once CI passes. The release workflow creates the GitHub release from that section. Go has no
-registry to upload to: the module proxy fetches the tag and keeps it for good, so a tag cannot be
-taken back once pushed, only retracted in a later release.
+main once CI passes. The release workflow refuses a tag that is not on main, then creates the GitHub
+release from that section, with the module zip and its signed build provenance attached (see
+[SECURITY.md](SECURITY.md) to verify it). Go has no registry to upload to: the module proxy fetches
+the tag and keeps it for good, so a tag cannot be taken back once pushed, only retracted in a later
+release.
 
 ## Licence
 

@@ -63,7 +63,9 @@ func TestMorph(t *testing.T) {
 func TestMorphStartsFromCurrentFrame(t *testing.T) {
 	stubSleep(t)
 	d, ft := openFake(Nano)
-	d.SetFrame([]RGB{{R: 200}, {B: 100}})
+	if err := d.SetFrame([]RGB{{R: 200}, {B: 100}}); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	if err := d.Morph(context.Background(), Off, 40*time.Millisecond); err != nil {
 		t.Fatalf("Morph: %v", err)
 	}
@@ -91,7 +93,9 @@ func TestMorphHonoursBrightnessLimit(t *testing.T) {
 	stubSleep(t)
 	d, ft := openFake(Nano)
 	d.SetBrightnessLimit(128)
-	d.Morph(context.Background(), White, 0)
+	if err := d.Morph(context.Background(), White, 0); err != nil {
+		t.Fatalf("Morph: %v", err)
+	}
 	if got := ft.frame(2); !slices.Equal(got, fill(2, RGB{128, 128, 128})) {
 		t.Errorf("frame = %v, want all 128", got)
 	}

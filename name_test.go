@@ -48,7 +48,9 @@ func TestNameUnset(t *testing.T) {
 
 func TestSetNameEmptyClears(t *testing.T) {
 	d, _ := openFake(Nano)
-	d.SetName("office")
+	if err := d.SetName("office"); err != nil {
+		t.Fatalf("SetName: %v", err)
+	}
 	if err := d.SetName(""); err != nil {
 		t.Fatalf("SetName(\"\"): %v", err)
 	}
