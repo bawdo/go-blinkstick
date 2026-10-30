@@ -44,8 +44,20 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
       # Static analysis does not vary by OS or Go version, so run it once.
+      # golangci-lint runs staticcheck among others; see .golangci.yml.
       - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
-        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+        name: Check formatting (gofmt -s)
+        run: |
+          unformatted="$(gofmt -s -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files need gofmt -s -w:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
       - if: matrix.os == 'ubuntu-latest' && matrix.go == '1.27'
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 

@@ -57,7 +57,7 @@ func (hidBackend) list() ([]deviceInfo, error) {
 	if err := acquireHID(); err != nil {
 		return nil, err
 	}
-	defer releaseHID()
+	defer func() { _ = releaseHID() }()
 	enumMu.Lock()
 	defer enumMu.Unlock()
 	var dis []deviceInfo
@@ -85,14 +85,14 @@ func (hidBackend) open(serial string) (transport, deviceInfo, error) {
 	}
 	if err != nil {
 		enumMu.Unlock()
-		releaseHID()
+		_ = releaseHID()
 		return nil, deviceInfo{}, openError(serial, err)
 	}
 	hi, err := dev.GetDeviceInfo()
 	enumMu.Unlock()
 	if err != nil {
-		dev.Close()
-		releaseHID()
+		_ = dev.Close()
+		_ = releaseHID()
 		return nil, deviceInfo{}, fmt.Errorf("blinkstick: device info: %w", err)
 	}
 	return hidTransport{dev}, fromHID(hi), nil

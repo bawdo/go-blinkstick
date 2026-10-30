@@ -86,8 +86,12 @@ func TestTwoDevicesAreIndependent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	nano.SetAll(RGB{R: 255})
-	square.SetAll(RGB{G: 255})
+	if err := nano.SetAll(RGB{R: 255}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
+	if err := square.SetAll(RGB{G: 255}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	if err := nano.Close(); err != nil {
 		t.Fatal(err)
 	}

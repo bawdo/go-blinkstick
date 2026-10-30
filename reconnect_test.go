@@ -22,7 +22,9 @@ func openNano(t *testing.T) (*Device, *fakeBackend, *fakeTransport) {
 
 func TestReconnectAfterReplug(t *testing.T) {
 	d, b, old := openNano(t)
-	d.SetAll(RGB{R: 255})
+	if err := d.SetAll(RGB{R: 255}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	b.unplug(0)
 	nt := b.replug(0)
 	if err := d.SetAll(RGB{B: 255}); err != nil {
@@ -38,7 +40,9 @@ func TestReconnectAfterReplug(t *testing.T) {
 
 func TestReconnectRepaintsLastFrame(t *testing.T) {
 	d, b, _ := openNano(t)
-	d.SetFrame([]RGB{{R: 255}, {G: 255}})
+	if err := d.SetFrame([]RGB{{R: 255}, {G: 255}}); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	b.unplug(0)
 	nt := b.replug(0)
 	got, err := d.Frame()
@@ -56,7 +60,9 @@ func TestReconnectRepaintsLastFrame(t *testing.T) {
 func TestReconnectRepaintsInverted(t *testing.T) {
 	d, b, _ := openNano(t)
 	d.SetInverse(true)
-	d.SetAll(RGB{R: 255})
+	if err := d.SetAll(RGB{R: 255}); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	b.unplug(0)
 	nt := b.replug(0)
 	if _, err := d.Frame(); err != nil {
@@ -104,7 +110,7 @@ func TestDisconnectedFailsFast(t *testing.T) {
 func TestCloseWhileDisconnected(t *testing.T) {
 	d, b, _ := openNano(t)
 	b.unplug(0)
-	d.SetAll(White)
+	_ = d.SetAll(White) // fails while unplugged; only Close matters here
 	if err := d.Close(); err != nil {
 		t.Errorf("Close while disconnected = %v, want nil", err)
 	}
@@ -150,7 +156,9 @@ func TestDisconnectedErrorText(t *testing.T) {
 
 func TestDisconnectedRepaintFailureKeepsCause(t *testing.T) {
 	d, b, _ := openNano(t)
-	d.SetAll(White)
+	if err := d.SetAll(White); err != nil {
+		t.Fatalf("SetAll: %v", err)
+	}
 	b.unplug(0)
 	nt := b.replug(0)
 	// The repaint fails, then the stick answers. Name is not a frame send,
@@ -164,7 +172,9 @@ func TestDisconnectedRepaintFailureKeepsCause(t *testing.T) {
 
 func TestReconnectRepaintsSetLED(t *testing.T) {
 	d, b, _ := openNano(t)
-	d.SetFrame([]RGB{{R: 255}, {G: 255}})
+	if err := d.SetFrame([]RGB{{R: 255}, {G: 255}}); err != nil {
+		t.Fatalf("SetFrame: %v", err)
+	}
 	if err := d.SetLED(1, RGB{B: 255}); err != nil {
 		t.Fatalf("SetLED: %v", err)
 	}

@@ -6,6 +6,11 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- CI runs golangci-lint (`errcheck`, `gosec`, `staticcheck` and others, see `.golangci.yml`) and
+  checks `gofmt -s`. `make lint` runs the same locally.
+
 ## [0.6.2] - 2026-10-29
 
 ### Added

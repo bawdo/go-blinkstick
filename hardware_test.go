@@ -66,8 +66,8 @@ func openBoth(t *testing.T) (nano, square *Device) {
 			t.Fatalf("OpenSerial(%s): %v", info.Serial, err)
 		}
 		t.Cleanup(func() {
-			d.Off()
-			d.Close()
+			_ = d.Off()
+			_ = d.Close()
 		})
 		switch info.Model {
 		case Nano:
@@ -125,7 +125,9 @@ func TestHardwareSetLEDAndLED(t *testing.T) {
 	eachStick(t, func(t *testing.T, d *Device) {
 		last := d.Info().Model.LEDs - 1
 		red := RGB{R: 255}
-		d.Off()
+		if err := d.Off(); err != nil {
+			t.Fatalf("Off: %v", err)
+		}
 		if err := d.SetLED(last, red); err != nil {
 			t.Fatalf("SetLED: %v", err)
 		}
@@ -261,7 +263,7 @@ func TestHardwareConcurrentOpen(t *testing.T) {
 					// the same stick may fail. Only a panic or race is a failure.
 					return
 				}
-				d.Close()
+				_ = d.Close()
 			})
 		}
 	}
@@ -309,7 +311,7 @@ func TestHardwareListNamedAndOpenName(t *testing.T) {
 		if d.Info().Serial != n.Serial {
 			t.Errorf("OpenName(%q) opened %s, want %s", n.Name, d.Info().Serial, n.Serial)
 		}
-		d.Close()
+		_ = d.Close()
 	}
 	if len(count) == 1 && count[""] > 0 {
 		t.Log("no stick has a name, so OpenName was not exercised; set one by hand to cover it")

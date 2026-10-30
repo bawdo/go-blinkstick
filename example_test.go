@@ -81,8 +81,12 @@ func ExampleDevice_SetLED() {
 	defer d.Close()
 
 	// Top LED red, bottom LED blue on a Nano.
-	d.SetLED(0, blinkstick.RGB{R: 255})
-	d.SetLED(1, blinkstick.RGB{B: 255})
+	if err := d.SetLED(0, blinkstick.RGB{R: 255}); err != nil {
+		log.Fatal(err)
+	}
+	if err := d.SetLED(1, blinkstick.RGB{B: 255}); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func ExampleDevice_Pulse() {
@@ -107,7 +111,9 @@ func ExampleDevice_SetBrightnessLimit() {
 	defer d.Close()
 
 	d.SetBrightnessLimit(64) // about a quarter of full brightness
-	d.SetAll(blinkstick.White)
+	if err := d.SetAll(blinkstick.White); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func ExampleRandomVivid() {
@@ -117,7 +123,9 @@ func ExampleRandomVivid() {
 	}
 	defer d.Close()
 
-	d.SetAll(blinkstick.RandomVivid())
+	if err := d.SetAll(blinkstick.RandomVivid()); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func ExampleOpenName() {
@@ -126,7 +134,9 @@ func ExampleOpenName() {
 		log.Fatal(err)
 	}
 	defer d.Close()
-	d.SetAll(blinkstick.RGB{G: 255})
+	if err := d.SetAll(blinkstick.RGB{G: 255}); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func ExampleListNamed() {

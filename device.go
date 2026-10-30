@@ -212,7 +212,7 @@ func (d *Device) transferLocked(op string, id byte, f func(transport) (int, erro
 		if d.reopen == nil {
 			return transferError(op, id, err)
 		}
-		d.t.Close()
+		_ = d.t.Close()
 		d.t = nil
 	}
 	// A failed frame send is about to be replaced, so repainting the old
@@ -251,7 +251,7 @@ func (d *Device) reconnectLocked(repaint bool) error {
 	}
 	p := encodeFrame(d.flipLocked(d.last))
 	if err := d.tryLocked(send(p)); err != nil {
-		d.t.Close()
+		_ = d.t.Close()
 		d.t = nil
 		return &disconnectedError{serial: d.info.Serial,
 			cause: fmt.Errorf("repaint after reopening: %w", transferError("send", reportFrame, err))}
@@ -378,7 +378,7 @@ func open(serial string) (*Device, error) {
 	}
 	info := newInfo(di)
 	if info.Model == unknownModel {
-		t.Close()
+		_ = t.Close()
 		return nil, fmt.Errorf("%w: %s (release %#04x)", ErrUnsupported, info.Serial, di.release)
 	}
 	return newReconnectingDevice(t, info), nil

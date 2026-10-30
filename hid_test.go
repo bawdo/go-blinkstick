@@ -20,20 +20,30 @@ func stubHID(t *testing.T) (inits, exits *int) {
 
 func TestHIDRefCounting(t *testing.T) {
 	inits, exits := stubHID(t)
-	acquireHID()
-	acquireHID()
+	if err := acquireHID(); err != nil {
+		t.Fatalf("acquireHID: %v", err)
+	}
+	if err := acquireHID(); err != nil {
+		t.Fatalf("acquireHID: %v", err)
+	}
 	if *inits != 1 {
 		t.Fatalf("inits = %d after two acquires, want 1", *inits)
 	}
-	releaseHID()
+	if err := releaseHID(); err != nil {
+		t.Fatalf("releaseHID: %v", err)
+	}
 	if *exits != 0 {
 		t.Fatalf("exits = %d with one device still open, want 0", *exits)
 	}
-	releaseHID()
+	if err := releaseHID(); err != nil {
+		t.Fatalf("releaseHID: %v", err)
+	}
 	if *exits != 1 {
 		t.Fatalf("exits = %d after last release, want 1", *exits)
 	}
-	acquireHID()
+	if err := acquireHID(); err != nil {
+		t.Fatalf("acquireHID: %v", err)
+	}
 	if *inits != 2 {
 		t.Errorf("inits = %d after reacquire, want 2", *inits)
 	}
