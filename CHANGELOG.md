@@ -11,6 +11,12 @@ All notable changes to this project are recorded here. The format follows
 - CI runs golangci-lint (`errcheck`, `gosec`, `staticcheck` and others, see `.golangci.yml`) and
   checks `gofmt -s`. `make lint` runs the same locally.
 
+### Changed
+
+- Dependabot waits 7 days before proposing a new release of a dependency, and groups Go module
+  updates into one pull request. Security updates are not delayed.
+- CI jobs have timeouts, and a fuzz failure in CI keeps its failing input as an artifact.
+
 ## [0.6.2] - 2026-10-29
 
 ### Added
