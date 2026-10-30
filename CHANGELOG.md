@@ -8,6 +8,10 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- Releases now carry the module zip and a signed SLSA build provenance attestation for it
+  (`go-blinkstick-vX.Y.Z.intoto.jsonl`), made with GitHub's attest action. SECURITY.md says how
+  to verify it with `gh attestation verify`.
+- The release workflow refuses a tag whose commit is not on main.
 - CI runs golangci-lint (`errcheck`, `gosec`, `staticcheck` and others, see `.golangci.yml`) and
   checks `gofmt -s`. `make lint` runs the same locally.
 
