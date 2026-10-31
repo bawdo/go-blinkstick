@@ -3,6 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/bawdo/go-blinkstick.svg)](https://pkg.go.dev/github.com/bawdo/go-blinkstick)
 [![codecov](https://codecov.io/gh/bawdo/go-blinkstick/graph/badge.svg)](https://codecov.io/gh/bawdo/go-blinkstick)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bawdo/go-blinkstick/badge)](https://scorecard.dev/viewer/?uri=github.com/bawdo/go-blinkstick)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16070/badge)](https://www.bestpractices.dev/projects/16070)
 
 A Go package for driving BlinkStick USB LED devices.
 
