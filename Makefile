@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help test lint fuzz build test-hardware test-reconnect
+.PHONY: help test lint fuzz build outdated test-hardware test-reconnect
 
 help: ## List make targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -24,6 +24,9 @@ fuzz: ## Run each fuzz target for FUZZTIME (default 15s)
 
 build: ## Compile the package
 	go build ./...
+
+outdated: ## Report outdated modules and tool pins, offer upgrades
+	./scripts/outdated.sh
 
 test-hardware: ## Run hardware tests (needs a Nano and a Square attached)
 	go test -tags hardware -race -count=1 -v -run '^TestHardware' ./...

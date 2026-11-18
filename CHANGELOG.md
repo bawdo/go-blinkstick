@@ -14,6 +14,12 @@ All notable changes to this project are recorded here. The format follows
 - The release workflow refuses a tag whose commit is not on main.
 - CI runs golangci-lint (`errcheck`, `gosec`, `staticcheck` and others, see `.golangci.yml`) and
   checks `gofmt -s`. `make lint` runs the same locally.
+- `make outdated` (`scripts/outdated.sh`) lists direct Go modules with a newer release, and any
+  that are deprecated or retracted. It also reports the golangci-lint and govulncheck pins in the
+  workflows and CONTRIBUTING.md (flagging pins that disagree), and the Go versions the CI matrix
+  tests, against their latest releases. Releases younger than 7 days are marked too fresh. On a
+  terminal it offers to upgrade modules, then runs `go mod tidy`, `make test` and
+  `go vet -tags hardware` and shows the `go.mod` diff, without committing. Needs `jq`.
 
 ### Changed
 
