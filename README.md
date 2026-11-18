@@ -146,6 +146,7 @@ make help           # list targets
 make test           # vet and unit tests, no hardware needed
 make fuzz           # each fuzz target for 15s (FUZZTIME=5m to go longer)
 make build          # compile
+make outdated       # outdated modules and tool pins, with an upgrade prompt
 make test-hardware  # tests against a real Nano and Square
 make test-reconnect # you unplug and replug the Nano when told
 ```
