@@ -24,9 +24,14 @@ Thanks for helping out. Bug reports, fixes and new device support are all welcom
    go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
    ```
 
-6. For anything users will notice, add a line under an `Unreleased` heading at the top of
+6. To check for outdated dependencies, run `make outdated` (it needs `go` and
+   [jq](https://jqlang.org/)). It reports newer Go modules and tool pins, and on a terminal
+   offers to upgrade the modules. The tool pins it reports (golangci-lint and govulncheck in
+   `.github/workflows/*.yml` and above, and the Go matrix) are updated by hand: Dependabot cannot
+   bump them.
+7. For anything users will notice, add a line under an `Unreleased` heading at the top of
    [CHANGELOG.md](CHANGELOG.md), creating the heading if it is not there.
-7. Open a pull request.
+8. Open a pull request.
 
 ## Hardware tests
 
